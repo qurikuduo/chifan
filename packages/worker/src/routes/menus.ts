@@ -206,3 +206,11 @@ menuRoutes.get('/:menuId/print', async (c) => {
   const printData = await svc.getPrintMenu(menuId, user.sub);
   return c.json(printData);
 });
+
+// GET /:menuId/allergen-warnings - 过敏食材预警
+menuRoutes.get('/:menuId/allergen-warnings', async (c) => {
+  const menuId = c.req.param('menuId')!;
+  const svc = new MenuService(c.env.DB);
+  const warnings = await svc.getAllergenWarnings(menuId);
+  return c.json(warnings);
+});

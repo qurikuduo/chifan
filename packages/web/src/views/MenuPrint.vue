@@ -1,20 +1,20 @@
 <template>
-  <AppLayout title="打印菜单" :show-back="true" :show-nav="false">
+  <AppLayout :title="$t('menu.print')" :show-back="true" :show-nav="false">
     <template #actions>
-      <button class="action-link" @click="printPage">打印</button>
+      <button class="action-link" @click="printPage">{{ $t('menu.print') }}</button>
     </template>
 
     <div v-if="data" class="print-content" ref="printRef">
       <h2 class="print-title">{{ data.title }}</h2>
-      <p class="print-meta">{{ mealLabel[data.mealType] ?? data.mealType }} · {{ data.mealTime?.substring(0, 16) }} · {{ data.totalInvitees }}人</p>
+      <p class="print-meta">{{ mealText(data.mealType) }} · {{ data.mealTime?.substring(0, 16) }} · {{ data.totalInvitees }}{{ $t('home.invitees') }}</p>
 
       <table class="print-table">
         <thead>
           <tr>
-            <th>菜名</th>
-            <th>想吃人数</th>
-            <th>烹饪方式</th>
-            <th>食材</th>
+            <th>{{ $t('dishes.name_label') }}</th>
+            <th>{{ $t('menu.want_to_eat') }}</th>
+            <th>{{ $t('dishes.cooking_methods') }}</th>
+            <th>{{ $t('dishes.ingredients') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -33,8 +33,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { api } from '@/api/client';
 import AppLayout from '@/components/AppLayout.vue';
+
+const { t } = useI18n();
 
 interface PrintData {
   title: string; mealType: string; mealTime: string; totalInvitees: number;
@@ -45,7 +48,10 @@ const route = useRoute();
 const menuId = route.params.id as string;
 const data = ref<PrintData | null>(null);
 
-const mealLabel: Record<string, string> = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', afternoon_tea: '下午茶', late_night: '宵夜' };
+function mealText(type: string): string {
+  const key = `menu.meal_types.${type}`;
+  return t(key) !== key ? t(key) : type;
+}
 
 function printPage() { window.print(); }
 

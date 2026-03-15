@@ -1,39 +1,39 @@
 <template>
-  <AppLayout :title="menu?.title ?? '菜单详情'" :show-back="true" :show-nav="false">
+  <AppLayout :title="menu?.title ?? $t('menu.detail')" :show-back="true" :show-nav="false">
     <template #actions>
-      <router-link v-if="isCreator && menu?.status === 'draft'" :to="`/menus/${menuId}/manage`" class="action-link">管理</router-link>
-      <router-link v-if="menu" :to="`/menus/${menuId}/print`" class="action-link">打印</router-link>
+      <router-link v-if="isCreator && menu?.status === 'draft'" :to="`/menus/${menuId}/manage`" class="action-link">{{ $t('menu.manage') }}</router-link>
+      <router-link v-if="menu" :to="`/menus/${menuId}/print`" class="action-link">{{ $t('menu.print') }}</router-link>
     </template>
 
     <div v-if="menu" class="detail">
       <!-- Status & Info -->
       <div class="info-card card">
         <div class="info-row">
-          <span :class="['badge', `badge-${menu.status}`]">{{ statusLabel[menu.status] ?? menu.status }}</span>
-          <span class="meal-type">{{ mealLabel[menu.mealType] ?? menu.mealType }}</span>
+          <span :class="['badge', `badge-${menu.status}`]">{{ statusText(menu.status) }}</span>
+          <span class="meal-type">{{ mealText(menu.mealType) }}</span>
         </div>
         <div class="info-row text-secondary">
-          <span>用餐：{{ menu.mealTime?.substring(0, 16) }}</span>
-          <span>截止：{{ menu.deadline?.substring(0, 16) }}</span>
+          <span>{{ $t('menu.meal') }}：{{ menu.mealTime?.substring(0, 16) }}</span>
+          <span>{{ $t('menu.deadline_label') }}：{{ menu.deadline?.substring(0, 16) }}</span>
         </div>
         <div class="info-row text-secondary">
-          <span>创建者：{{ menu.createdByUser?.displayName }}</span>
-          <span>{{ menu.invitees?.length ?? 0 }}人受邀</span>
+          <span>{{ $t('menu.creator') }}：{{ menu.createdByUser?.displayName }}</span>
+          <span>{{ menu.invitees?.length ?? 0 }}{{ $t('menu.invited') }}</span>
         </div>
       </div>
 
       <!-- Creator Actions -->
       <div v-if="isCreator" class="action-bar">
-        <button v-if="menu.status === 'draft'" class="btn btn-primary" @click="doAction('publish')">发布菜单</button>
-        <button v-if="menu.status === 'published'" class="btn btn-warning" @click="doAction('close-selection')">关闭选菜</button>
-        <button v-if="menu.status === 'selection_closed'" class="btn btn-primary" @click="doAction('start-cooking')">开始做菜</button>
-        <button v-if="menu.status === 'cooking'" class="btn btn-success" @click="doAction('complete')">饭做好了！</button>
-        <button v-if="menu.status === 'draft'" class="btn btn-danger" @click="doDelete">删除菜单</button>
+        <button v-if="menu.status === 'draft'" class="btn btn-primary" @click="doAction('publish')">{{ $t('menu.publish') }}</button>
+        <button v-if="menu.status === 'published'" class="btn btn-warning" @click="doAction('close-selection')">{{ $t('menu.close_selection') }}</button>
+        <button v-if="menu.status === 'selection_closed'" class="btn btn-primary" @click="doAction('start-cooking')">{{ $t('menu.start_cooking') }}</button>
+        <button v-if="menu.status === 'cooking'" class="btn btn-success" @click="doAction('complete')">{{ $t('menu.meal_ready') }}</button>
+        <button v-if="menu.status === 'draft'" class="btn btn-danger" @click="doDelete">{{ $t('menu.delete') }}</button>
       </div>
 
       <!-- Selection Progress -->
       <div v-if="menu.status !== 'draft'" class="section">
-        <h4>选菜进度 ({{ completedCount }}/{{ menu.invitees?.length ?? 0 }})</h4>
+        <h4>{{ $t('menu.selection_progress') }} ({{ completedCount }}/{{ menu.invitees?.length ?? 0 }})</h4>
         <div class="invitee-list">
           <span v-for="inv in menu.invitees" :key="inv.userId" :class="['invitee-chip', { done: inv.hasSelected }]">
             {{ inv.displayName }} {{ inv.hasSelected ? '✓' : '' }}
@@ -43,7 +43,7 @@
 
       <!-- Dishes -->
       <div class="section">
-        <h4>菜品 ({{ menu.dishes?.length ?? 0 }})</h4>
+        <h4>{{ $t('menu.dish_count') }} ({{ menu.dishes?.length ?? 0 }})</h4>
         <div class="dish-list">
           <div v-for="d in menu.dishes" :key="d.menuDishId" :class="['dish-item card', { selected: mySelections.includes(d.menuDishId) }]" @click="toggleSelection(d.menuDishId)">
             <img v-if="d.photoUrl" :src="d.photoUrl" class="dish-photo" alt="" />
@@ -51,7 +51,7 @@
               <strong>{{ d.name }}</strong>
               <span v-if="d.description" class="text-secondary">{{ d.description }}</span>
               <div class="selection-info">
-                <span>{{ d.selectionCount }}人想吃</span>
+                <span>{{ d.selectionCount }}{{ $t('menu.want_to_eat') }}</span>
                 <span v-for="s in d.selections" :key="s.userId" class="sel-user">{{ s.displayName }}</span>
               </div>
             </div>
@@ -60,10 +60,21 @@
         </div>
       </div>
 
+      <!-- Allergen Warnings -->
+      <div v-if="allergenWarnings.length" class="section allergen-section">
+        <h4>⚠️ {{ $t('menu.allergen_warning') }}</h4>
+        <div v-for="w in allergenWarnings" :key="w.menuDishId" class="allergen-card card">
+          <strong>{{ w.dishName }}</strong>
+          <div v-for="c in w.conflicts" :key="c.userName + c.ingredientName" class="conflict-item">
+            {{ $t('menu.allergen_conflict', { user: c.userName, ingredient: c.ingredientName }) }}
+          </div>
+        </div>
+      </div>
+
       <!-- Submit Selection -->
       <div v-if="canSelect" class="submit-bar">
         <button class="btn btn-primary btn-block" @click="submitSelection" :disabled="submitting">
-          {{ submitting ? '提交中...' : `提交选择 (${mySelections.length}道)` }}
+          {{ submitting ? $t('menu.submitting') : `${$t('menu.submit_selection')} (${mySelections.length})` }}
         </button>
       </div>
     </div>
@@ -73,11 +84,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { api } from '@/api/client';
 import { useAuthStore } from '@/stores/auth';
 import AppLayout from '@/components/AppLayout.vue';
 import { useToast } from '@/composables/useToast';
 
+const { t } = useI18n();
 const toast = useToast();
 
 interface MenuDish {
@@ -97,6 +110,12 @@ interface MenuDetailData {
   dishes: MenuDish[];
 }
 
+interface AllergenWarning {
+  dishName: string;
+  menuDishId: string;
+  conflicts: Array<{ userName: string; ingredientName: string }>;
+}
+
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -104,10 +123,17 @@ const menuId = route.params.id as string;
 
 const menu = ref<MenuDetailData | null>(null);
 const mySelections = ref<string[]>([]);
+const allergenWarnings = ref<AllergenWarning[]>([]);
 const submitting = ref(false);
 
-const statusLabel: Record<string, string> = { draft: '草稿', published: '选菜中', selection_closed: '选菜结束', cooking: '烹饪中', completed: '已完成' };
-const mealLabel: Record<string, string> = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', afternoon_tea: '下午茶', late_night: '宵夜' };
+function statusText(status: string): string {
+  const key = `menu.status.${status}`;
+  return t(key) !== key ? t(key) : status;
+}
+function mealText(type: string): string {
+  const key = `menu.meal_types.${type}`;
+  return t(key) !== key ? t(key) : type;
+}
 
 const isCreator = computed(() => {
   if (!menu.value) return false;
@@ -126,6 +152,9 @@ async function load() {
   if (canSelect.value) {
     mySelections.value = await api.get<string[]>(`/menus/${menuId}/selections/me`);
   }
+  try {
+    allergenWarnings.value = await api.get<AllergenWarning[]>(`/menus/${menuId}/allergen-warnings`);
+  } catch { /* ignore if no allergen data */ }
 }
 
 function toggleSelection(menuDishId: string) {
@@ -196,4 +225,10 @@ onMounted(load);
 .sel-user { background: var(--color-bg-secondary); padding: 1px 6px; border-radius: var(--radius-full); }
 .check { font-size: 20px; }
 .submit-bar { position: sticky; bottom: 0; padding: var(--spacing-sm) 0; background: var(--color-bg); }
+
+.allergen-section { background: #fff3cd; border-radius: var(--radius-md); padding: var(--spacing-md); }
+.allergen-card { background: rgba(255,255,255,0.7); margin-top: var(--spacing-xs); padding: var(--spacing-sm); }
+.conflict-item { font-size: var(--font-size-sm); margin-top: 2px; }
+.conflict-user { font-weight: 600; color: var(--color-danger); }
+.conflict-ingredient { font-weight: 600; color: var(--color-warning); }
 </style>

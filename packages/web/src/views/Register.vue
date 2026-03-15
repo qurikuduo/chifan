@@ -1,30 +1,32 @@
 <template>
   <div class="register-page">
     <div class="register-header">
-      <h1>注册新账号</h1>
+      <h1>{{ $t('auth.register_title') }}</h1>
     </div>
     <form class="register-form" @submit.prevent="handleRegister">
-      <input class="input" v-model="form.username" placeholder="用户名" required />
-      <input class="input" v-model="form.email" type="email" placeholder="邮箱" required />
-      <input class="input" v-model="form.displayName" placeholder="显示名称" required />
-      <input class="input" v-model="form.password" type="password" placeholder="密码" required />
-      <input class="input" v-model="confirmPassword" type="password" placeholder="确认密码" required />
+      <input class="input" v-model="form.username" :placeholder="$t('auth.username')" required />
+      <input class="input" v-model="form.email" type="email" :placeholder="$t('auth.email')" required />
+      <input class="input" v-model="form.displayName" :placeholder="$t('auth.display_name')" required />
+      <input class="input" v-model="form.password" type="password" :placeholder="$t('auth.password')" required />
+      <input class="input" v-model="confirmPassword" type="password" :placeholder="$t('auth.confirm_password')" required />
       <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
       <p v-if="successMsg" class="success-msg">{{ successMsg }}</p>
       <button class="btn btn-primary btn-block btn-lg" type="submit" :disabled="loading">
-        {{ loading ? '注册中...' : '注册' }}
+        {{ loading ? $t('auth.registering') : $t('auth.register') }}
       </button>
     </form>
     <p class="register-footer">
-      已有账号？<router-link to="/login">去登录 →</router-link>
+      {{ $t('auth.has_account') }}<router-link to="/login">{{ $t('auth.go_login') }}</router-link>
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 
+const { t } = useI18n();
 const auth = useAuthStore();
 
 const form = ref({ username: '', email: '', displayName: '', password: '' });
@@ -38,16 +40,16 @@ async function handleRegister() {
   successMsg.value = '';
 
   if (form.value.password !== confirmPassword.value) {
-    errorMsg.value = '两次输入的密码不一致';
+    errorMsg.value = t('auth.password_mismatch');
     return;
   }
 
   loading.value = true;
   try {
     await auth.register(form.value);
-    successMsg.value = '注册成功！请等待管理员审批后即可登录。';
+    successMsg.value = t('auth.register_pending');
   } catch (e: unknown) {
-    errorMsg.value = e instanceof Error ? e.message : '注册失败';
+    errorMsg.value = e instanceof Error ? e.message : t('auth.register_failed');
   } finally {
     loading.value = false;
   }

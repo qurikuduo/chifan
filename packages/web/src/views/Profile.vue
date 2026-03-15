@@ -1,5 +1,5 @@
 <template>
-  <AppLayout title="个人中心">
+  <AppLayout :title="$t('profile.title')">
     <div v-if="user" class="profile-card card">
       <div class="profile-avatar">
         {{ user.displayName.charAt(0) }}
@@ -9,17 +9,25 @@
         <p class="text-secondary">{{ user.username }}</p>
         <p class="text-secondary">{{ user.email }}</p>
         <p v-if="user.familyRole" class="family-role">{{ user.familyRole }}</p>
-        <span v-if="user.isAdmin" class="badge badge-admin">管理员</span>
+        <span v-if="user.isAdmin" class="badge badge-admin">{{ $t('profile.admin_badge') }}</span>
       </div>
     </div>
 
     <div class="profile-actions">
-      <router-link to="/profile/edit" class="btn btn-secondary btn-block">编辑个人信息</router-link>
-      <router-link to="/profile/password" class="btn btn-secondary btn-block">修改密码</router-link>
-      <router-link to="/profile/preferences" class="btn btn-secondary btn-block">🍽 饮食偏好设置</router-link>
-      <router-link to="/help" class="btn btn-secondary btn-block">📖 使用帮助</router-link>
-      <router-link v-if="auth.isAdmin" to="/admin" class="btn btn-secondary btn-block">管理后台</router-link>
-      <button class="btn btn-danger btn-block" @click="handleLogout">退出登录</button>
+      <router-link to="/profile/edit" class="btn btn-secondary btn-block">{{ $t('profile.edit') }}</router-link>
+      <router-link to="/profile/password" class="btn btn-secondary btn-block">{{ $t('profile.change_password') }}</router-link>
+      <router-link to="/profile/preferences" class="btn btn-secondary btn-block">{{ $t('profile.dietary_prefs') }}</router-link>
+      <router-link to="/help" class="btn btn-secondary btn-block">{{ $t('profile.help') }}</router-link>
+      <router-link v-if="auth.isAdmin" to="/admin" class="btn btn-secondary btn-block">{{ $t('profile.admin') }}</router-link>
+
+      <div class="language-selector">
+        <label>{{ $t('common.language') }}</label>
+        <select class="input" v-model="currentLocale" @change="changeLocale">
+          <option v-for="loc in supportedLocales" :key="loc.code" :value="loc.code">{{ loc.label }}</option>
+        </select>
+      </div>
+
+      <button class="btn btn-danger btn-block" @click="handleLogout">{{ $t('auth.logout') }}</button>
     </div>
   </AppLayout>
 </template>
@@ -27,12 +35,24 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { api } from '@/api/client';
 import AppLayout from '@/components/AppLayout.vue';
+import { supportedLocales } from '@/i18n/index';
 
 const router = useRouter();
 const auth = useAuthStore();
+const { locale } = useI18n();
+
+const currentLocale = ref(locale.value);
+
+function changeLocale() {
+  locale.value = currentLocale.value;
+  localStorage.setItem('locale', currentLocale.value);
+  document.documentElement.dir = currentLocale.value === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.lang = currentLocale.value;
+}
 
 const user = ref<{
   id: string;
@@ -110,6 +130,21 @@ async function handleLogout() {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+.language-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
+}
+.language-selector label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.language-selector select {
+  flex: 1;
 }
 
 .btn-danger {

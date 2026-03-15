@@ -1,53 +1,53 @@
 <template>
-  <AppLayout title="管理菜单" :show-back="true" :show-nav="false">
+  <AppLayout :title="$t('menu.manage')" :show-back="true" :show-nav="false">
     <div v-if="menu" class="manage">
       <!-- Edit Basic Info -->
       <div class="section card">
-        <h4>基本信息</h4>
+        <h4>{{ $t('menu.title_label') }}</h4>
         <div class="form-group">
-          <label>标题</label>
+          <label>{{ $t('menu.title_label') }}</label>
           <input class="input" v-model="editForm.title" />
         </div>
         <div class="form-group">
-          <label>餐次</label>
+          <label>{{ $t('menu.meal_type') }}</label>
           <select class="input" v-model="editForm.mealType">
             <option v-for="mt in mealTypes" :key="mt.value" :value="mt.value">{{ mt.label }}</option>
           </select>
         </div>
         <div class="form-group">
-          <label>用餐时间</label>
+          <label>{{ $t('menu.meal_time') }}</label>
           <input class="input" type="datetime-local" v-model="editForm.mealTime" />
         </div>
         <div class="form-group">
-          <label>截止时间</label>
+          <label>{{ $t('menu.deadline') }}</label>
           <input class="input" type="datetime-local" v-model="editForm.deadline" />
         </div>
-        <button class="btn btn-primary" @click="saveBasic">保存修改</button>
+        <button class="btn btn-primary" @click="saveBasic">{{ $t('common.save') }}</button>
       </div>
 
       <!-- Invitees -->
       <div class="section card">
-        <h4>邀请家人</h4>
+        <h4>{{ $t('menu.invitees') }}</h4>
         <div class="chip-list">
           <label v-for="u in familyMembers" :key="u.id" :class="['chip', { active: inviteeIds.includes(u.id) }]">
             <input type="checkbox" :value="u.id" v-model="inviteeIds" hidden />
             {{ u.displayName }}
           </label>
         </div>
-        <button class="btn btn-primary" @click="saveInvitees" style="margin-top: 8px;">保存邀请</button>
+        <button class="btn btn-primary" @click="saveInvitees" style="margin-top: 8px;">{{ $t('common.save') }}</button>
       </div>
 
       <!-- Dishes -->
       <div class="section card">
-        <h4>菜品 ({{ menu.dishes?.length ?? 0 }})</h4>
+        <h4>{{ $t('menu.dish_count') }} ({{ menu.dishes?.length ?? 0 }})</h4>
         <div class="dish-list">
           <div v-for="d in menu.dishes" :key="d.menuDishId" class="dish-row">
             <span>{{ d.name }}</span>
-            <button class="btn btn-sm btn-danger" @click="removeDish(d.menuDishId)">移除</button>
+            <button class="btn btn-sm btn-danger" @click="removeDish(d.menuDishId)">{{ $t('common.delete') }}</button>
           </div>
         </div>
         <div class="add-dish-section">
-          <input class="input" v-model="dishSearchQuery" placeholder="搜索菜品名称 / 拼音..."
+          <input class="input" v-model="dishSearchQuery" :placeholder="$t('menu.search_dish_placeholder')"
                  @input="handleDishSearch" />
           <div v-if="dishSearchResults.length && dishSearchQuery" class="search-dropdown">
             <div v-for="d in dishSearchResults" :key="d.id" class="search-item" @click="addDishFromSearch(d)">
@@ -62,13 +62,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { api } from '@/api/client';
 import AppLayout from '@/components/AppLayout.vue';
 import { toPinyin, toPinyinInitial } from '@/utils/pinyin';
 import { useToast } from '@/composables/useToast';
 
+const { t } = useI18n();
 const toast = useToast();
 
 interface Dish { menuDishId: string; dishId: string; name: string }
@@ -81,13 +83,13 @@ interface MenuData {
 const route = useRoute();
 const menuId = route.params.id as string;
 
-const mealTypes = [
-  { label: '早餐', value: 'breakfast' },
-  { label: '午餐', value: 'lunch' },
-  { label: '晚餐', value: 'dinner' },
-  { label: '下午茶', value: 'afternoon_tea' },
-  { label: '宵夜', value: 'late_night' },
-];
+const mealTypes = computed(() => [
+  { label: t('menu.meal_types.breakfast'), value: 'breakfast' },
+  { label: t('menu.meal_types.lunch'), value: 'lunch' },
+  { label: t('menu.meal_types.dinner'), value: 'dinner' },
+  { label: t('menu.meal_types.afternoon_tea'), value: 'afternoon_tea' },
+  { label: t('menu.meal_types.late_night'), value: 'late_night' },
+]);
 
 const menu = ref<MenuData | null>(null);
 const editForm = ref({ title: '', mealType: '', mealTime: '', deadline: '' });
@@ -149,12 +151,12 @@ async function saveBasic() {
     mealTime: new Date(editForm.value.mealTime).toISOString(),
     deadline: new Date(editForm.value.deadline).toISOString(),
   });
-  toast.success('已保存');
+  toast.success(t('common.success'));
 }
 
 async function saveInvitees() {
   await api.put(`/menus/${menuId}/invitees`, { inviteeIds: inviteeIds.value });
-  toast.success('已保存');
+  toast.success(t('common.success'));
 }
 
 async function removeDish(menuDishId: string) {

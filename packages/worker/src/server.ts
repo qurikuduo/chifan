@@ -70,6 +70,7 @@ const migrations: Array<{ table: string; sql: string }> = [
       ingredient_id TEXT NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
       PRIMARY KEY (user_id, ingredient_id)
     );
+    CREATE INDEX IF NOT EXISTS idx_user_allergens_user ON user_allergens(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_allergens_ingredient ON user_allergens(ingredient_id);`,
   },
 ];

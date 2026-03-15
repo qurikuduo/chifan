@@ -642,6 +642,84 @@ export class MenuService {
     };
   }
 
+  // ---------- allergen warnings ----------
+  async getAllergenWarnings(menuId: string) {
+    // Get all dishes and their ingredients
+    const dishes = await this.db
+      .prepare(
+        `SELECT md.id as menu_dish_id, d.id as dish_id, d.name as dish_name
+         FROM menu_dishes md JOIN dishes d ON d.id = md.dish_id
+         WHERE md.menu_id = ?`,
+      )
+      .bind(menuId)
+      .all();
+
+    // Get all invitees and their allergens
+    const invitees = await this.db
+      .prepare(
+        `SELECT mi.user_id, u.display_name,
+                ua.ingredient_id, i.name as ingredient_name
+         FROM menu_invitees mi
+         JOIN users u ON u.id = mi.user_id
+         LEFT JOIN user_allergens ua ON ua.user_id = mi.user_id
+         LEFT JOIN ingredients i ON i.id = ua.ingredient_id
+         WHERE mi.menu_id = ?`,
+      )
+      .bind(menuId)
+      .all();
+
+    // Build allergen map: userId -> { displayName, allergenIds[] }
+    const allergenMap = new Map<string, { displayName: string; allergens: Map<string, string> }>();
+    for (const row of invitees.results ?? []) {
+      const r = row as Record<string, unknown>;
+      const uid = r.user_id as string;
+      if (!allergenMap.has(uid)) {
+        allergenMap.set(uid, { displayName: r.display_name as string, allergens: new Map() });
+      }
+      if (r.ingredient_id) {
+        allergenMap.get(uid)!.allergens.set(r.ingredient_id as string, r.ingredient_name as string);
+      }
+    }
+
+    const warnings: Array<{
+      dishName: string;
+      menuDishId: string;
+      conflicts: Array<{ userName: string; ingredientName: string }>;
+    }> = [];
+
+    for (const dishRow of dishes.results ?? []) {
+      const dr = dishRow as Record<string, unknown>;
+      const dishId = dr.dish_id as string;
+
+      // Get ingredients for this dish
+      const ings = await this.db
+        .prepare('SELECT ingredient_id FROM dish_ingredients WHERE dish_id = ?')
+        .bind(dishId)
+        .all();
+
+      const dishIngIds = new Set((ings.results ?? []).map((r: Record<string, unknown>) => r.ingredient_id as string));
+
+      const conflicts: Array<{ userName: string; ingredientName: string }> = [];
+      for (const [, info] of allergenMap) {
+        for (const [allergenId, allergenName] of info.allergens) {
+          if (dishIngIds.has(allergenId)) {
+            conflicts.push({ userName: info.displayName, ingredientName: allergenName });
+          }
+        }
+      }
+
+      if (conflicts.length > 0) {
+        warnings.push({
+          dishName: dr.dish_name as string,
+          menuDishId: dr.menu_dish_id as string,
+          conflicts,
+        });
+      }
+    }
+
+    return warnings;
+  }
+
   // ---------- helpers ----------
   private async getMenuRow(menuId: string) {
     const menu = await this.db.prepare('SELECT * FROM menus WHERE id = ?').bind(menuId).first<Record<string, unknown>>();

@@ -250,3 +250,6 @@ CREATE TABLE IF NOT EXISTS user_allergens (
 
 CREATE INDEX IF NOT EXISTS idx_user_allergens_user ON user_allergens(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_allergens_ingredient ON user_allergens(ingredient_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_allergens_user ON user_allergens(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_allergens_ingredient ON user_allergens(ingredient_id);

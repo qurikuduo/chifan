@@ -1,7 +1,7 @@
 <template>
-  <AppLayout title="家庭美食">
+  <AppLayout :title="$t('app.name')">
     <div class="home-actions">
-      <router-link to="/menus/create" class="btn btn-primary btn-block">+ 创建新菜单</router-link>
+      <router-link to="/menus/create" class="btn btn-primary btn-block">{{ $t('home.create_menu') }}</router-link>
     </div>
 
     <div class="tab-bar">
@@ -19,19 +19,19 @@
         <router-link v-for="m in menus" :key="m.id" :to="`/menus/${m.id}`" class="menu-card card">
           <div class="menu-header">
             <strong>{{ m.title }}</strong>
-            <span :class="['badge', `badge-${m.status}`]">{{ statusLabel[m.status] ?? m.status }}</span>
+            <span :class="['badge', `badge-${m.status}`]">{{ statusText(m.status) }}</span>
           </div>
           <div class="menu-meta">
-            <span>{{ mealLabel[m.mealType] ?? m.mealType }}</span>
+            <span>{{ mealText(m.mealType) }}</span>
             <span>{{ m.mealTime?.substring(0, 16) }}</span>
-            <span>{{ m.dishCount }}道菜</span>
-            <span>{{ m.completedInvitees }}/{{ m.totalInvitees }}人已选</span>
+            <span>{{ m.dishCount }}{{ $t('home.dishes') }}</span>
+            <span>{{ m.completedInvitees }}/{{ m.totalInvitees }}{{ $t('home.people_selected') }}</span>
           </div>
         </router-link>
         <div v-if="menus.length === 0" class="empty">
           <div class="empty-icon">📋</div>
-          <p>暂无菜单</p>
-          <p class="empty-hint">点击上方按钮创建第一个菜单吧</p>
+          <p>{{ $t('home.empty') }}</p>
+          <p class="empty-hint">{{ $t('home.empty_hint') }}</p>
         </div>
       </template>
     </div>
@@ -39,10 +39,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { api } from '@/api/client';
 import AppLayout from '@/components/AppLayout.vue';
 import { useToast } from '@/composables/useToast';
+
+const { t } = useI18n();
 
 interface MenuListItem {
   id: string; title: string; mealType: string; mealTime: string;
@@ -50,15 +53,21 @@ interface MenuListItem {
   totalInvitees: number; completedInvitees: number;
 }
 
-const tabs = [
-  { label: '全部', value: '' },
-  { label: '选菜中', value: 'published' },
-  { label: '烹饪中', value: 'cooking' },
-  { label: '已完成', value: 'completed' },
-];
+const tabs = computed(() => [
+  { label: t('home.tabs.all'), value: '' },
+  { label: t('menu.status.published'), value: 'published' },
+  { label: t('menu.status.cooking'), value: 'cooking' },
+  { label: t('menu.status.completed'), value: 'completed' },
+]);
 
-const statusLabel: Record<string, string> = { draft: '草稿', published: '选菜中', selection_closed: '选菜结束', cooking: '烹饪中', completed: '已完成' };
-const mealLabel: Record<string, string> = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', afternoon_tea: '下午茶', late_night: '宵夜' };
+function statusText(status: string): string {
+  const key = `menu.status.${status}`;
+  return t(key) !== key ? t(key) : status;
+}
+function mealText(type: string): string {
+  const key = `menu.meal_types.${type}`;
+  return t(key) !== key ? t(key) : type;
+}
 
 const currentTab = ref('');
 const menus = ref<MenuListItem[]>([]);
@@ -72,7 +81,7 @@ async function load() {
     const res = await api.get<{ items: MenuListItem[] }>(`/menus${params}`);
     menus.value = res.items ?? [];
   } catch (e: unknown) {
-    toast.error((e as Error).message || '加载失败');
+    toast.error((e as Error).message || t('common.error'));
   } finally {
     loading.value = false;
   }

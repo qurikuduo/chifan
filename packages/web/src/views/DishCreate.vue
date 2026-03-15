@@ -1,17 +1,17 @@
 <template>
-  <AppLayout title="新增菜品" :show-back="true" :show-nav="false">
+  <AppLayout :title="$t('dishes.create_title')" :show-back="true" :show-nav="false">
     <form class="form" @submit.prevent="handleSubmit">
       <div class="form-group">
-        <label>菜品名称 *</label>
-        <input class="input" v-model="form.name" required placeholder="输入菜名" />
+        <label>{{ $t('dishes.name_label') }} *</label>
+        <input class="input" v-model="form.name" required :placeholder="$t('dishes.name_placeholder')" />
       </div>
       <div class="form-group">
-        <label>描述 / 做法</label>
-        <MarkdownEditor v-model="form.description" placeholder="食材用量、烹饪步骤、口味偏好等（支持图文混排）" :rows="8" />
+        <label>{{ $t('dishes.desc_label') }}</label>
+        <MarkdownEditor v-model="form.description" :placeholder="$t('dishes.desc_detail_placeholder')" :rows="8" />
       </div>
 
       <div class="form-group">
-        <label>标签</label>
+        <label>{{ $t('dishes.tags') }}</label>
         <div class="chip-select">
           <button type="button" v-for="t in allTags" :key="t.id" class="chip"
             :class="{ active: form.tagIds.includes(t.id) }"
@@ -20,7 +20,7 @@
       </div>
 
       <div class="form-group">
-        <label>烹饪方式</label>
+        <label>{{ $t('dishes.cooking_methods') }}</label>
         <div class="chip-select">
           <button type="button" v-for="m in allMethods" :key="m.id" class="chip"
             :class="{ active: form.cookingMethodIds.includes(m.id) }"
@@ -29,7 +29,7 @@
       </div>
 
       <div class="form-group">
-        <label>食材</label>
+        <label>{{ $t('dishes.ingredients') }}</label>
         <div class="chip-select">
           <button type="button" v-for="i in allIngredients" :key="i.id" class="chip"
             :class="{ active: form.ingredientIds.includes(i.id) }"
@@ -39,7 +39,7 @@
 
       <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
       <button class="btn btn-primary btn-block btn-lg" type="submit" :disabled="loading">
-        {{ loading ? '创建中...' : '创建菜品' }}
+        {{ loading ? $t('dishes.creating') : $t('dishes.create_dish') }}
       </button>
     </form>
   </AppLayout>
@@ -48,12 +48,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { api } from '@/api/client';
 import AppLayout from '@/components/AppLayout.vue';
 import MarkdownEditor from '@/components/MarkdownEditor.vue';
 import { toPinyin, toPinyinInitial } from '@/utils/pinyin';
 
 const router = useRouter();
+const { t } = useI18n();
 
 const form = ref({
   name: '',
@@ -91,7 +93,7 @@ async function handleSubmit() {
     });
     router.push(`/dishes/${res.id}`);
   } catch (e: unknown) {
-    errorMsg.value = e instanceof Error ? e.message : '创建失败';
+    errorMsg.value = e instanceof Error ? e.message : t('common.error');
   } finally {
     loading.value = false;
   }

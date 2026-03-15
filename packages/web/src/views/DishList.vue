@@ -1,11 +1,11 @@
 <template>
-  <AppLayout title="菜品库">
+  <AppLayout :title="$t('dishes.title')">
     <template #actions>
-      <router-link to="/dishes/create" class="btn btn-primary btn-sm">+ 新增</router-link>
+      <router-link to="/dishes/create" class="btn btn-primary btn-sm">{{ $t('dishes.create') }}</router-link>
     </template>
 
     <div class="search-bar">
-      <input class="input" v-model="keyword" placeholder="搜索菜品..." @input="debouncedSearch" />
+      <input class="input" v-model="keyword" :placeholder="$t('dishes.search')" @input="debouncedSearch" />
     </div>
 
     <div class="tag-bar" v-if="tags.length">
@@ -44,7 +44,7 @@
 
       <div v-if="dishes.length === 0" class="empty">
         <div class="empty-icon">📝</div>
-        <p>还没有菜品，点右上角「+ 新增」添加第一道菜吧</p>
+        <p>{{ $t('dishes.empty_hint') }}</p>
       </div>
     </div>
 

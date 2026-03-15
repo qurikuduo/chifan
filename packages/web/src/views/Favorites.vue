@@ -1,5 +1,5 @@
 <template>
-  <AppLayout title="口味偏好" :show-back="true">
+  <AppLayout :title="$t('favorites.title')" :show-back="true">
     <div v-if="loading" class="skeleton-list">
       <div class="section card" v-for="i in 2" :key="i">
         <div class="skeleton-shimmer" style="width:40%;height:20px;margin-bottom:12px;border-radius:4px"></div>
@@ -16,7 +16,7 @@
     <template v-else>
       <!-- 我的最爱 -->
       <div class="section card">
-        <h3>🏆 我的最爱</h3>
+        <h3>🏆 {{ $t('favorites.my_favorites') }}</h3>
         <div v-if="myFavorites.length" class="fav-list">
           <div v-for="(d, idx) in myFavorites" :key="d.id" class="fav-item" @click="goToDish(d.id)">
             <span class="rank">{{ idx + 1 }}</span>
@@ -24,23 +24,23 @@
               <span class="fav-name">{{ d.name }}</span>
               <span v-if="d.description" class="fav-desc">{{ excerpt(d.description) }}</span>
             </div>
-            <span class="fav-count">{{ d.selectionCount }} 次</span>
+            <span class="fav-count">{{ d.selectionCount }} {{ $t('dishes.times') }}</span>
           </div>
         </div>
-        <p v-else class="empty">还没有选菜记录</p>
+        <p v-else class="empty">{{ $t('favorites.no_records') }}</p>
       </div>
 
       <!-- 家人最爱 -->
       <div v-for="member in allFavorites" :key="member.userId" class="section card">
-        <h3>{{ member.displayName }} 的最爱</h3>
+        <h3>{{ $t('favorites.favorites_of', { name: member.displayName }) }}</h3>
         <div v-if="member.dishes.length" class="fav-list">
           <div v-for="(d, idx) in member.dishes" :key="d.id" class="fav-item" @click="goToDish(d.id)">
             <span class="rank">{{ idx + 1 }}</span>
             <span class="fav-name">{{ d.name }}</span>
-            <span class="fav-count">{{ d.count }} 次</span>
+            <span class="fav-count">{{ d.count }} {{ $t('dishes.times') }}</span>
           </div>
         </div>
-        <p v-else class="empty">暂无记录</p>
+        <p v-else class="empty">{{ $t('favorites.no_records_member') }}</p>
       </div>
     </template>
   </AppLayout>

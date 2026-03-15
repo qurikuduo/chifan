@@ -1,7 +1,7 @@
 <template>
-  <AppLayout :title="dish?.name ?? '菜品详情'" :show-back="true" :show-nav="false">
+  <AppLayout :title="dish?.name ?? $t('dishes.detail')" :show-back="true" :show-nav="false">
     <template #actions>
-      <router-link v-if="dish" :to="`/dishes/${dish.id}/edit`" class="btn btn-secondary btn-sm">编辑</router-link>
+      <router-link v-if="dish" :to="`/dishes/${dish.id}/edit`" class="btn btn-secondary btn-sm">{{ $t('dishes.edit') }}</router-link>
     </template>
 
     <div v-if="loadError" class="error-msg">{{ loadError }}</div>
@@ -20,40 +20,40 @@
             @click="setDefault(p.id)"
           >
             <img :src="p.url" :alt="dish.name" />
-            <button class="photo-delete" @click.stop="deletePhoto(p.id)" title="删除照片">×</button>
-            <span v-if="p.id === dish.defaultPhotoId" class="photo-badge">封面</span>
+            <button class="photo-delete" @click.stop="deletePhoto(p.id)" :title="$t('dishes.delete_photo')">×</button>
+            <span v-if="p.id === dish.defaultPhotoId" class="photo-badge">{{ $t('dishes.cover') }}</span>
           </div>
         </div>
         <div v-else class="no-photo">
           <span class="no-photo-icon">🍽</span>
-          <span class="no-photo-text">暂无照片，点击下方上传</span>
+          <span class="no-photo-text">{{ $t('dishes.no_photo') }}</span>
         </div>
-        <div v-if="uploading" class="upload-progress">上传中...</div>
+        <div v-if="uploading" class="upload-progress">{{ $t('dishes.uploading') }}</div>
       </div>
 
       <div class="detail-section card">
         <h3>{{ dish.name }}</h3>
         <div v-if="dish.description" class="desc markdown-body" v-html="renderMarkdown(dish.description)"></div>
-        <p v-else class="desc empty-desc">暂无描述，点击编辑添加</p>
-        <p class="meta">创建者：{{ dish.createdByUser.displayName }}</p>
+        <p v-else class="desc empty-desc">{{ $t('dishes.no_desc') }}</p>
+        <p class="meta">{{ $t('dishes.creator') }}：{{ dish.createdByUser.displayName }}</p>
       </div>
 
       <div v-if="dish.tags.length" class="detail-section">
-        <h4>标签</h4>
+        <h4>{{ $t('dishes.tags') }}</h4>
         <div class="tag-list">
           <span v-for="t in dish.tags" :key="t.id" class="chip">{{ t.name }}</span>
         </div>
       </div>
 
       <div v-if="dish.cookingMethods.length" class="detail-section">
-        <h4>烹饪方式</h4>
+        <h4>{{ $t('dishes.cooking_methods') }}</h4>
         <div class="tag-list">
           <span v-for="m in dish.cookingMethods" :key="m.id" class="chip">{{ m.name }}</span>
         </div>
       </div>
 
       <div v-if="dish.ingredients.length" class="detail-section">
-        <h4>食材</h4>
+        <h4>{{ $t('dishes.ingredients') }}</h4>
         <div class="tag-list">
           <span v-for="i in dish.ingredients" :key="i.id" class="chip">{{ i.name }}</span>
         </div>
@@ -61,10 +61,10 @@
 
       <div class="actions">
         <label class="btn btn-secondary btn-block upload-btn">
-          📷 上传照片
+          📷 {{ $t('dishes.upload_photo') }}
           <input type="file" accept="image/jpeg,image/png,image/webp" hidden @change="handleUpload" />
         </label>
-        <button class="btn btn-danger-outline btn-block" @click="handleDelete">删除菜品</button>
+        <button class="btn btn-danger-outline btn-block" @click="handleDelete">{{ $t('dishes.delete') }}</button>
       </div>
     </template>
   </AppLayout>
@@ -73,11 +73,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { api } from '@/api/client';
 import AppLayout from '@/components/AppLayout.vue';
 import { useToast } from '@/composables/useToast';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+
+const { t } = useI18n();
 
 interface DishDetailData {
   id: string;
@@ -107,7 +110,7 @@ async function loadDish() {
   try {
     dish.value = await api.get<DishDetailData>(`/dishes/${route.params.id}`);
   } catch (e) {
-    loadError.value = (e as Error).message || '加载失败';
+    loadError.value = (e as Error).message || t('common.error');
   }
 }
 
@@ -121,10 +124,10 @@ async function handleUpload(e: Event) {
     const formData = new FormData();
     formData.append('file', file);
     await api.upload(`/dishes/${dish.value.id}/photos`, formData);
-    toast.success('照片上传成功');
+    toast.success(t('common.success'));
     await loadDish();
   } catch (err) {
-    toast.error((err as Error).message || '上传失败');
+    toast.error((err as Error).message || t('common.error'));
   } finally {
     uploading.value = false;
     input.value = '';
@@ -136,25 +139,25 @@ async function setDefault(photoId: string) {
   try {
     await api.put(`/dishes/${dish.value.id}/default-photo`, { photoId });
     dish.value.defaultPhotoId = photoId;
-    toast.success('已设为封面');
+    toast.success(t('common.success'));
   } catch (err) {
-    toast.error((err as Error).message || '设置失败');
+    toast.error((err as Error).message || t('common.error'));
   }
 }
 
 async function deletePhoto(photoId: string) {
-  if (!dish.value || !confirm('确定删除这张照片？')) return;
+  if (!dish.value || !confirm(t('dishes.delete_photo_confirm'))) return;
   try {
     await api.delete(`/dishes/${dish.value.id}/photos/${photoId}`);
     await loadDish();
-    toast.success('照片已删除');
+    toast.success(t('common.success'));
   } catch (err) {
-    toast.error((err as Error).message || '删除失败');
+    toast.error((err as Error).message || t('common.error'));
   }
 }
 
 async function handleDelete() {
-  if (!dish.value || !confirm('确定要删除这道菜吗？此操作不可恢复。')) return;
+  if (!dish.value || !confirm(t('dishes.delete_confirm'))) return;
   await api.delete(`/dishes/${dish.value.id}`);
   router.push('/dishes');
 }

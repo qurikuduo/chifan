@@ -1,31 +1,31 @@
 <template>
-  <AppLayout title="创建菜单" :show-back="true" :show-nav="false">
+  <AppLayout :title="$t('menu.create_title')" :show-back="true" :show-nav="false">
     <form @submit.prevent="handleSubmit" class="form">
       <div class="form-group">
-        <label>标题</label>
-        <input class="input" v-model="form.title" required placeholder="如：周末晚餐" />
+        <label>{{ $t('menu.title_label') }}</label>
+        <input class="input" v-model="form.title" required :placeholder="$t('menu.title_placeholder')" />
       </div>
 
       <div class="form-row">
         <div class="form-group flex-1">
-          <label>餐次</label>
+          <label>{{ $t('menu.meal_type') }}</label>
           <select class="input" v-model="form.mealType" required>
             <option v-for="mt in mealTypes" :key="mt.value" :value="mt.value">{{ mt.label }}</option>
           </select>
         </div>
         <div class="form-group flex-1">
-          <label>用餐时间</label>
+          <label>{{ $t('menu.meal_time') }}</label>
           <input class="input" type="datetime-local" v-model="form.mealTime" required />
         </div>
       </div>
 
       <div class="form-group">
-        <label>选菜截止时间</label>
+        <label>{{ $t('menu.deadline') }}</label>
         <input class="input" type="datetime-local" v-model="form.deadline" required />
       </div>
 
       <div class="form-group">
-        <label>邀请家人</label>
+        <label>{{ $t('menu.invitees') }}</label>
         <div class="chip-list">
           <label v-for="u in familyMembers" :key="u.id" :class="['chip', { active: form.inviteeIds.includes(u.id) }]">
             <input type="checkbox" :value="u.id" v-model="form.inviteeIds" hidden />
@@ -36,8 +36,8 @@
 
       <!-- 搜索选菜 -->
       <div class="form-group">
-        <label>菜品（输入中文或拼音搜索）</label>
-        <input class="input" v-model="dishSearch" placeholder="搜索菜品名称 / 拼音 / 首字母..."
+        <label>{{ $t('menu.search_dish_label') }}</label>
+        <input class="input" v-model="dishSearch" :placeholder="$t('menu.search_dish_placeholder')"
                @input="handleDishSearch" />
 
         <!-- 搜索结果 -->
@@ -47,7 +47,7 @@
                @mouseenter="hoveredDish = d" @mouseleave="hoveredDish = null">
             <div class="search-item-main">
               <span class="dish-name">{{ d.name }}</span>
-              <span v-if="d.selectionCount" class="dish-stat">被选 {{ d.selectionCount }} 次</span>
+              <span v-if="d.selectionCount" class="dish-stat">{{ $t('menu.selected_times', { count: d.selectionCount }) }}</span>
               <span v-if="d.lastUsedAt" class="dish-date">{{ formatDate(d.lastUsedAt) }}</span>
             </div>
             <div v-if="d.description" class="dish-excerpt">{{ excerpt(d.description) }}</div>
@@ -57,7 +57,7 @@
         <!-- 快速创建新菜品 -->
         <div v-if="dishSearch.trim() && !searchResults.length" class="quick-add">
           <button type="button" class="btn btn-secondary btn-block" @click="quickAddDish" :disabled="quickAdding">
-            {{ quickAdding ? '创建中...' : `➕ 快速创建「${dishSearch.trim()}」` }}
+            {{ quickAdding ? $t('dishes.creating') : `➕ ${$t('menu.quick_create', { name: dishSearch.trim() })}` }}
           </button>
         </div>
 
@@ -74,25 +74,27 @@
             <button type="button" class="remove-btn" @click="removeDish(d.id)">✕</button>
           </div>
         </div>
-        <p v-else class="hint">可稍后在菜单管理中添加</p>
+        <p v-else class="hint">{{ $t('menu.add_later_hint') }}</p>
       </div>
 
       <button type="submit" class="btn btn-primary btn-block" :disabled="submitting">
-        {{ submitting ? '创建中...' : '创建菜单' }}
+        {{ submitting ? $t('menu.creating') : $t('menu.create') }}
       </button>
     </form>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { api } from '@/api/client';
 import AppLayout from '@/components/AppLayout.vue';
 import { toPinyin, toPinyinInitial } from '@/utils/pinyin';
 import { useToast } from '@/composables/useToast';
 
 const router = useRouter();
+const { t } = useI18n();
 const toast = useToast();
 
 interface DishResult {
@@ -104,13 +106,13 @@ interface DishResult {
   lastUsedAt: string | null;
 }
 
-const mealTypes = [
-  { label: '早餐', value: 'breakfast' },
-  { label: '午餐', value: 'lunch' },
-  { label: '晚餐', value: 'dinner' },
-  { label: '下午茶', value: 'afternoon_tea' },
-  { label: '宵夜', value: 'late_night' },
-];
+const mealTypes = computed(() => [
+  { label: t('menu.meal_types.breakfast'), value: 'breakfast' },
+  { label: t('menu.meal_types.lunch'), value: 'lunch' },
+  { label: t('menu.meal_types.dinner'), value: 'dinner' },
+  { label: t('menu.meal_types.afternoon_tea'), value: 'afternoon_tea' },
+  { label: t('menu.meal_types.late_night'), value: 'late_night' },
+]);
 
 const form = ref({
   title: '',
@@ -174,7 +176,7 @@ async function quickAddDish() {
     searchResults.value = [];
     toast.success(`已创建「${name}」`);
   } catch (e: unknown) {
-    toast.error((e as Error).message || '创建失败');
+    toast.error((e as Error).message || t('common.error'));
   } finally {
     quickAdding.value = false;
   }
@@ -213,7 +215,7 @@ async function loadData() {
 }
 
 async function handleSubmit() {
-  if (!form.value.inviteeIds.length) { toast.error('请至少邀请一位家人'); return; }
+  if (!form.value.inviteeIds.length) { toast.error(t('menu.invite_required')); return; }
   submitting.value = true;
   try {
     const payload = {
@@ -225,7 +227,7 @@ async function handleSubmit() {
     const res = await api.post<{ id: string }>('/menus', payload);
     router.push(`/menus/${res.id}`);
   } catch (e: unknown) {
-    toast.error((e as Error).message || '创建失败');
+    toast.error((e as Error).message || t('common.error'));
   } finally {
     submitting.value = false;
   }

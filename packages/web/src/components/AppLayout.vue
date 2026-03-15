@@ -15,23 +15,23 @@
     <nav v-if="showNav" class="bottom-nav">
       <router-link to="/" class="nav-item" :class="{ active: route.path === '/' }">
         <span class="nav-icon">🏠</span>
-        <span class="nav-label">首页</span>
+        <span class="nav-label">{{ $t('nav.home') }}</span>
       </router-link>
       <router-link to="/dishes" class="nav-item" :class="{ active: route.path.startsWith('/dishes') }">
         <span class="nav-icon">🍽</span>
-        <span class="nav-label">菜品</span>
+        <span class="nav-label">{{ $t('nav.dishes') }}</span>
       </router-link>
       <router-link to="/favorites" class="nav-item" :class="{ active: route.path === '/favorites' }">
         <span class="nav-icon">❤️</span>
-        <span class="nav-label">偏好</span>
+        <span class="nav-label">{{ $t('nav.favorites') }}</span>
       </router-link>
       <router-link to="/notifications" class="nav-item" :class="{ active: route.path === '/notifications' }">
         <span class="nav-icon">🔔<span v-if="notifStore.unreadCount" class="badge-dot">{{ notifStore.unreadCount > 99 ? '99+' : notifStore.unreadCount }}</span></span>
-        <span class="nav-label">通知</span>
+        <span class="nav-label">{{ $t('nav.notifications') }}</span>
       </router-link>
       <router-link to="/profile" class="nav-item" :class="{ active: route.path.startsWith('/profile') }">
         <span class="nav-icon">👤</span>
-        <span class="nav-label">我的</span>
+        <span class="nav-label">{{ $t('nav.profile') }}</span>
       </router-link>
     </nav>
   </div>

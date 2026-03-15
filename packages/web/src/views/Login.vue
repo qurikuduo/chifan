@@ -1,18 +1,18 @@
 <template>
   <div class="login-page">
     <div class="login-header">
-      <h1>🍽 家庭美食</h1>
+      <h1>🍽 {{ $t('app.name') }}</h1>
     </div>
     <form class="login-form" @submit.prevent="handleLogin">
-      <input class="input" v-model="form.login" placeholder="用户名或邮箱" required />
-      <input class="input" v-model="form.password" type="password" placeholder="密码" required />
+      <input class="input" v-model="form.login" :placeholder="$t('auth.username_or_email')" required />
+      <input class="input" v-model="form.password" type="password" :placeholder="$t('auth.password')" required />
       <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
       <button class="btn btn-primary btn-block btn-lg" type="submit" :disabled="loading">
-        {{ loading ? '登录中...' : '登录' }}
+        {{ loading ? $t('auth.logging_in') : $t('auth.login') }}
       </button>
     </form>
     <p class="login-footer">
-      还没有账号？<router-link to="/register">去注册 →</router-link>
+      {{ $t('auth.no_account') }}<router-link to="/register">{{ $t('auth.go_register') }}</router-link>
     </p>
   </div>
 </template>

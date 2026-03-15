@@ -1,23 +1,23 @@
 <template>
-  <AppLayout title="饮食偏好" :show-back="true" :show-nav="false">
-    <div v-if="loading" class="loading">加载中...</div>
+  <AppLayout :title="$t('preferences.title')" :show-back="true" :show-nav="false">
+    <div v-if="loading" class="loading">{{ $t('app.loading') }}</div>
 
     <template v-else>
       <!-- 我的偏好 -->
       <div class="section card">
-        <h3>🍽 我的饮食偏好</h3>
+        <h3>🍽 {{ $t('preferences.title') }}</h3>
 
         <div class="form-group">
-          <label>饮食备注</label>
+          <label>{{ $t('preferences.dietary_notes') }}</label>
           <textarea class="input textarea" v-model="myPrefs.dietaryNotes" rows="3"
-            placeholder="例如：不吃辣、少油少盐、素食主义者..."
+            :placeholder="$t('preferences.notes_placeholder')"
           ></textarea>
         </div>
 
         <div class="form-group">
-          <label>过敏/忌口食材</label>
+          <label>{{ $t('preferences.allergens') }}</label>
           <div class="allergen-search">
-            <input class="input" v-model="searchKeyword" placeholder="搜索食材..." @input="searchIngredients" />
+            <input class="input" v-model="searchKeyword" :placeholder="$t('preferences.search_ingredient')" @input="searchIngredients" />
           </div>
           <div v-if="allIngredients.length" class="chip-select">
             <button type="button" v-for="i in displayIngredients" :key="i.id"
@@ -26,28 +26,28 @@
             >{{ i.name }}</button>
           </div>
           <div v-if="myPrefs.allergenIds.length" class="selected-summary">
-            已选 {{ myPrefs.allergenIds.length }} 种过敏食材
+            {{ myPrefs.allergenIds.length }} {{ $t('preferences.allergens') }}
           </div>
         </div>
 
         <button class="btn btn-primary btn-block" :disabled="saving" @click="savePrefs">
-          {{ saving ? '保存中...' : '保存偏好' }}
+          {{ saving ? $t('preferences.saving') : $t('preferences.save') }}
         </button>
       </div>
 
       <!-- 家人偏好总览 -->
       <div class="section">
-        <h3>👨‍👩‍👧‍👦 家人偏好总览</h3>
+        <h3>👨‍👩‍👧‍👦 {{ $t('preferences.family_prefs') }}</h3>
         <div v-for="member in familyPrefs" :key="member.userId" class="member-card card">
           <h4>{{ member.displayName }}</h4>
           <p v-if="member.dietaryNotes" class="notes">{{ member.dietaryNotes }}</p>
-          <p v-else class="notes empty-notes">暂无备注</p>
+          <p v-else class="notes empty-notes">{{ $t('preferences.no_prefs') }}</p>
           <div v-if="member.allergens.length" class="allergen-tags">
-            <span class="allergen-warning">⚠️ 过敏：</span>
+            <span class="allergen-warning">⚠️</span>
             <span v-for="a in member.allergens" :key="a.id" class="chip chip-danger">{{ a.name }}</span>
           </div>
         </div>
-        <div v-if="familyPrefs.length === 0" class="empty">暂无家人偏好记录</div>
+        <div v-if="familyPrefs.length === 0" class="empty">{{ $t('preferences.no_prefs') }}</div>
       </div>
     </template>
   </AppLayout>
