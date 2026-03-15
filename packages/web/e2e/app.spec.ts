@@ -302,3 +302,86 @@ test.describe('Page Transitions', () => {
     await expect(page).toHaveURL('/');
   });
 });
+
+// ─── Language Switching (i18n) ────────────────────────────────
+test.describe('Language Switching', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('profile page has language selector', async ({ page }) => {
+    await page.goto('/profile');
+    const langSelect = page.locator('.language-selector select');
+    await expect(langSelect).toBeVisible({ timeout: 5000 });
+    // Default locale is 'zh'
+    await expect(langSelect).toHaveValue('zh');
+  });
+
+  test('switching to English changes UI text', async ({ page }) => {
+    await page.goto('/profile');
+    const langSelect = page.locator('.language-selector select');
+    await langSelect.selectOption('en');
+    await page.waitForTimeout(500);
+    // Nav should now show English labels
+    await expect(page.locator('.bottom-nav')).toContainText('Home');
+    await expect(page.locator('.bottom-nav')).toContainText('Dishes');
+    await expect(page.locator('.bottom-nav')).toContainText('Me');
+  });
+
+  test('switching to Spanish changes UI text', async ({ page }) => {
+    await page.goto('/profile');
+    const langSelect = page.locator('.language-selector select');
+    await langSelect.selectOption('es');
+    await page.waitForTimeout(500);
+    await expect(page.locator('.bottom-nav')).toContainText('Inicio');
+  });
+
+  test('language preference persists after page reload', async ({ page }) => {
+    await page.goto('/profile');
+    const langSelect = page.locator('.language-selector select');
+    await langSelect.selectOption('en');
+    await page.waitForTimeout(500);
+    // Reload and verify English is still active
+    await page.reload();
+    await page.waitForTimeout(1000);
+    await expect(page.locator('.bottom-nav')).toContainText('Home');
+    // Reset to Chinese for other tests
+    const langSelectAfter = page.locator('.language-selector select');
+    await langSelectAfter.selectOption('zh');
+  });
+
+  test('help page content is displayed', async ({ page }) => {
+    await page.goto('/help');
+    await expect(page.locator('.help-section').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('body')).toContainText('快速入门');
+  });
+});
+
+// ─── Allergen Warnings ────────────────────────────────────────
+test.describe('Allergen Warnings', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('allergen warnings API returns array', async ({ page }) => {
+    // Call the allergen-warnings endpoint for a test menu
+    // First, get the token from localStorage
+    const token = await page.evaluate(() => localStorage.getItem('token'));
+    expect(token).toBeTruthy();
+
+    // Use an arbitrary non-existent menu ID — should return empty array
+    const res = await page.request.get('/api/v1/menus/test-nonexistent/allergen-warnings', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  test('preferences page shows allergen settings section', async ({ page }) => {
+    await page.goto('/profile/preferences');
+    await page.waitForSelector('textarea', { timeout: 8000 });
+    // The preferences page should have allergen-related content
+    await expect(page.locator('body')).toContainText('过敏食材', { timeout: 5000 });
+  });
+});

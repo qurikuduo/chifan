@@ -58,6 +58,7 @@ export default defineConfig({
           'vendor-pinyin': ['pinyin-pro'],
           'vendor-markdown': ['marked', 'dompurify'],
           'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-i18n': ['vue-i18n'],
         },
       },
     },

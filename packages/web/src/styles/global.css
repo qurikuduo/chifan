@@ -125,6 +125,31 @@ input, textarea, select {
   transform: scale(0.98);
 }
 
+/* 交互元素过渡 */
+.btn {
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+.card {
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.nav-item {
+  transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.input, textarea, select {
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.15);
+}
+
 /* 输入框暗色模式 */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -134,7 +159,11 @@ input, textarea, select {
     --color-text: #e6e6e6;
     --color-text-secondary: #a0a0b0;
     --color-text-tertiary: #6b7080;
+    --color-text-light: #4a5068;
     --color-border: #2a3a5e;
+    --color-overlay: rgba(0,0,0,0.6);
+    --color-skeleton: #2a3a5e;
+    --color-skeleton-shine: #344872;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
     --shadow-md: 0 2px 8px rgba(0,0,0,0.35);
     --shadow-lg: 0 4px 16px rgba(0,0,0,0.45);
@@ -154,6 +183,69 @@ input, textarea, select {
     background: var(--color-bg-gray);
     color: var(--color-text);
     border-color: var(--color-border);
+  }
+
+  /* 顶部栏暗色 */
+  .top-bar {
+    background: var(--color-bg-white);
+    border-bottom-color: var(--color-border);
+  }
+
+  /* 底部导航暗色 */
+  .bottom-nav {
+    background: var(--color-bg-white);
+    border-top-color: var(--color-border);
+  }
+
+  /* 卡片暗色 */
+  .card {
+    background: var(--color-bg-white);
+    border: 1px solid var(--color-border);
+  }
+
+  /* 模态框 / 对话框 */
+  .modal, .dialog {
+    background: var(--color-bg-white);
+    border: 1px solid var(--color-border);
+  }
+
+  /* 标签暗色 */
+  .tag, .badge {
+    background: var(--color-bg-gray);
+    color: var(--color-text-secondary);
+    border-color: var(--color-border);
+  }
+
+  /* 选中态高亮 */
+  .tab.active {
+    color: var(--color-primary-light);
+    border-bottom-color: var(--color-primary-light);
+  }
+
+  /* 占位文本色 */
+  ::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  /* 分割线 */
+  hr {
+    border-color: var(--color-border);
+  }
+
+  /* 代码块暗色 */
+  pre, code {
+    background: var(--color-bg-gray);
+    color: var(--color-text);
+  }
+
+  /* 下拉菜单箭头图标暗色 */
+  select.input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a0a0b0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  }
+
+  /* 滚动条暗色 */
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-text-tertiary);
   }
 }
 

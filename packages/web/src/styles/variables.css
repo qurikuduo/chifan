@@ -56,4 +56,16 @@
 
   /* 底部导航高度 */
   --bottom-nav-height: 56px;
+
+  /* 过渡 */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.35s ease;
+
+  /* 遮罩 */
+  --color-overlay: rgba(0,0,0,0.4);
+
+  /* 骨架屏 */
+  --color-skeleton: #E8E8E8;
+  --color-skeleton-shine: #F5F5F5;
 }

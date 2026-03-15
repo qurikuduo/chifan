@@ -6,4 +6,5 @@ coverage/
 .dev.vars
 *.local
 .DS_Store
+test-results/
 data/
