@@ -2,6 +2,7 @@
  * Node.js server entry point using @hono/node-server.
  * Replaces Cloudflare Workers runtime.
  */
+import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { readFileSync, existsSync } from 'fs';
@@ -9,6 +10,7 @@ import { join, resolve } from 'path';
 import app from './index.js';
 import { SqliteD1Database } from './adapters/sqlite.js';
 import { FileSystemStorage } from './adapters/storage.js';
+import { hashPassword } from './utils/password.js';
 
 // --- Configuration ---
 const PORT = parseInt(process.env.PORT || '8787', 10);
@@ -37,14 +39,23 @@ if (existsSync(schemaPath)) {
       db.exec(seed);
     }
     console.log('Database initialized.');
+
+    // Set admin password (seed.sql has placeholder)
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123456';
+    const hash = await hashPassword(adminPassword);
+    await db.prepare("UPDATE users SET password_hash = ? WHERE id = 'admin001'").bind(hash).run();
+    console.log('Admin password initialized.');
   }
 }
 
 // --- Initialize photo storage ---
 const photos = new FileSystemStorage(PHOTOS_PATH);
 
-// --- Inject env bindings into every request ---
-app.use('*', async (c, next) => {
+// --- Create wrapper app that injects env BEFORE routes ---
+const server = new Hono();
+
+// Inject env bindings first (before CORS and routes in sub-app)
+server.use('*', async (c, next) => {
   c.env = {
     DB: db as any,
     PHOTOS: photos as any,
@@ -54,8 +65,8 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-// --- Photo serving route ---
-app.get('/api/v1/photos/*', async (c) => {
+// Photo serving route
+server.get('/api/v1/photos/*', async (c) => {
   const key = c.req.path.replace('/api/v1/photos/', '');
   const obj = await photos.get(key);
   if (!obj) return c.json({ error: { code: 'NOT_FOUND', message: '照片不存在' } }, 404);
@@ -77,12 +88,15 @@ app.get('/api/v1/photos/*', async (c) => {
   });
 });
 
-// --- Serve static frontend files ---
+// Mount the main API app
+server.route('/', app);
+
+// Serve static frontend files
 const staticRoot = resolve(import.meta.dirname!, STATIC_DIR);
 if (existsSync(staticRoot)) {
-  app.use('/*', serveStatic({ root: staticRoot }));
+  server.use('/*', serveStatic({ root: staticRoot }));
   // SPA fallback – serve index.html for non-API, non-file routes
-  app.get('*', async (c) => {
+  server.get('*', async (c) => {
     if (c.req.path.startsWith('/api/')) return c.notFound();
     const indexPath = join(staticRoot, 'index.html');
     if (!existsSync(indexPath)) return c.notFound();
@@ -94,7 +108,7 @@ if (existsSync(staticRoot)) {
 // --- Start server ---
 console.log(`Starting server on port ${PORT}...`);
 serve({
-  fetch: app.fetch,
+  fetch: server.fetch,
   port: PORT,
 }, (info) => {
   console.log(`Server running at http://localhost:${info.port}`);

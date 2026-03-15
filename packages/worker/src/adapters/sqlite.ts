@@ -3,6 +3,8 @@
  * Provides the same API as Cloudflare D1 so that service code needs no changes.
  */
 import Database from 'better-sqlite3';
+import { mkdirSync } from 'fs';
+import { dirname } from 'path';
 
 interface D1Result<T = unknown> {
   results?: T[];
@@ -20,6 +22,7 @@ export class SqliteD1Database {
   private db: Database.Database;
 
   constructor(dbPath: string) {
+    mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
