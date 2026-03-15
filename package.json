@@ -1,0 +1,31 @@
+{
+  "name": "family-menu",
+  "version": "0.0.1",
+  "private": true,
+  "description": "家庭用餐协作网站",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild",
+      "sharp",
+      "vue-demi"
+    ]
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @family-menu/web dev",
+    "dev:worker": "pnpm --filter @family-menu/worker dev",
+    "start": "pnpm --filter @family-menu/worker start",
+    "build:web": "pnpm --filter @family-menu/web build",
+    "build:shared": "pnpm --filter @family-menu/shared build",
+    "build": "pnpm build:shared && pnpm build:web",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}

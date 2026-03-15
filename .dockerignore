@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+*.md
+.wrangler
+.mf
+data
+e2e
+**/__tests__
+**/vitest.config.ts
+**/playwright.config.ts

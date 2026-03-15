@@ -1,0 +1,155 @@
+import { test, expect, Page } from '@playwright/test';
+
+const ADMIN = { login: 'admin', password: 'admin123456' };
+
+async function login(page: Page, creds = ADMIN) {
+  await page.goto('/login');
+  await page.fill('input[placeholder="用户名或邮箱"]', creds.login);
+  await page.fill('input[type="password"]', creds.password);
+  await page.click('button[type="submit"]');
+  await page.waitForURL('/', { timeout: 8000 });
+}
+
+// ─── Auth Flow ────────────────────────────────────────────────
+test.describe('Auth Flow', () => {
+  test('shows login page with form', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.locator('input[placeholder="用户名或邮箱"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toContainText('登录');
+  });
+
+  test('invalid credentials do not navigate away from login', async ({ page }) => {
+    await page.goto('/login');
+    await page.fill('input[placeholder="用户名或邮箱"]', 'nonexistent');
+    await page.fill('input[type="password"]', 'wrongpassword');
+    await page.click('button[type="submit"]');
+    // The user should remain on /login (either error shows or page reloads)
+    await page.waitForTimeout(3000);
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test('login with admin and redirects to home', async ({ page }) => {
+    await login(page);
+    await expect(page).toHaveURL('/');
+    await expect(page.locator('.bottom-nav')).toBeVisible();
+  });
+
+  test('redirects unauthenticated user to login', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test('register link navigates to register page', async ({ page }) => {
+    await page.goto('/login');
+    await page.click('a[href="/register"]');
+    await expect(page).toHaveURL('/register');
+  });
+});
+
+// ─── Navigation ───────────────────────────────────────────────
+test.describe('Navigation', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('bottom nav shows all tabs', async ({ page }) => {
+    const nav = page.locator('.bottom-nav');
+    await expect(nav.locator('.nav-item')).toHaveCount(5);
+    await expect(nav).toContainText('首页');
+    await expect(nav).toContainText('菜品');
+    await expect(nav).toContainText('偏好');
+    await expect(nav).toContainText('通知');
+    await expect(nav).toContainText('我的');
+  });
+
+  test('navigate to dishes page', async ({ page }) => {
+    await page.click('.nav-item >> text=菜品');
+    await expect(page).toHaveURL('/dishes');
+    await expect(page.locator('.top-title')).toContainText('菜品库');
+  });
+
+  test('navigate to profile page', async ({ page }) => {
+    await page.click('.nav-item >> text=我的');
+    await expect(page).toHaveURL('/profile');
+  });
+});
+
+// ─── Dish CRUD ────────────────────────────────────────────────
+test.describe('Dish CRUD', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('create a dish via API and verify redirect', async ({ page }) => {
+    const dishName = `E2E菜品_${Date.now()}`;
+    await page.goto('/dishes/create');
+    await page.fill('input[placeholder="输入菜名"]', dishName);
+    await page.fill('textarea', '这是E2E测试的菜品描述');
+
+    // Intercept the POST response to verify success
+    const responsePromise = page.waitForResponse(
+      (r) => r.url().includes('/api/v1/dishes') && r.request().method() === 'POST'
+    );
+    await page.click('button[type="submit"]');
+    const response = await responsePromise;
+    expect(response.status()).toBe(201);
+
+    // Verify redirect to dish detail page (ID is UUID)
+    await page.waitForURL(/\/dishes\/[\w-]+/, { timeout: 10000 });
+  });
+
+  test('dishes page loads and shows content', async ({ page }) => {
+    await page.goto('/dishes');
+    const cards = page.locator('.dish-card');
+    const empty = page.locator('.empty');
+    await expect(cards.or(empty).first()).toBeVisible({ timeout: 5000 });
+  });
+
+  test('dish search input works', async ({ page }) => {
+    await page.goto('/dishes');
+    const searchInput = page.locator('input[placeholder="搜索菜品..."]');
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill('不存在的菜品XXXXXX');
+    await page.waitForTimeout(500);
+    await expect(page.locator('.dish-card')).toHaveCount(0, { timeout: 3000 });
+  });
+});
+
+// ─── Menu Workflow ─────────────────────────────────────────────
+test.describe('Menu Workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('menu create page loads with form fields', async ({ page }) => {
+    await page.goto('/menus/create');
+    await expect(page.locator('input[placeholder="如：周末晚餐"]')).toBeVisible();
+    await expect(page.locator('select')).toBeVisible();
+    await expect(page.locator('input[type="datetime-local"]').first()).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
+  });
+
+  test('home page shows menus and tabs', async ({ page }) => {
+    await page.goto('/');
+    const tabs = page.locator('.tab-bar .tab');
+    await expect(tabs.first()).toBeVisible({ timeout: 5000 });
+    await expect(tabs).toHaveCount(4);
+
+    // Click second tab and verify active state
+    await tabs.nth(1).click();
+    await expect(tabs.nth(1)).toHaveClass(/active/);
+  });
+});
+
+// ─── Admin ─────────────────────────────────────────────────────
+test.describe('Admin', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('admin can access user management', async ({ page }) => {
+    await page.goto('/admin/users');
+    await expect(page.locator('body')).toContainText('admin', { timeout: 8000 });
+  });
+});

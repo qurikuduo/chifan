@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8787:8787"
+    volumes:
+      - app-data:/app/data
+    environment:
+      - JWT_SECRET=change-me-in-production
+      - CORS_ORIGIN=*
+      - PORT=8787
+    restart: unless-stopped
+
+volumes:
+  app-data:

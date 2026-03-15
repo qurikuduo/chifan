@@ -1,0 +1,20 @@
+name = "family-menu-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "family-menu-db"
+database_id = "1c871fcc-a909-449a-8570-70c9e9d8812f"
+
+# R2 存储桶绑定（需先在 Dashboard 启用 R2 后取消注释）
+# [[r2_buckets]]
+# binding = "PHOTOS"
+# bucket_name = "family-menu-photos"
+
+# 环境变量（本地开发用 .dev.vars 覆盖）
+[vars]
+JWT_SECRET = "change-me-in-production"
+CORS_ORIGIN = "http://localhost:5173"

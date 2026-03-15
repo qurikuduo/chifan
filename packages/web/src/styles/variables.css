@@ -1,0 +1,58 @@
+:root {
+  /* 主题色 - 温暖的食物主题 */
+  --color-primary: #E67E22;
+  --color-primary-light: #F39C12;
+  --color-primary-dark: #D35400;
+
+  /* 状态色 */
+  --color-success: #27AE60;
+  --color-warning: #F1C40F;
+  --color-danger: #E74C3C;
+  --color-info: #3498DB;
+
+  /* 菜单状态色 */
+  --color-draft: #95A5A6;
+  --color-published: #3498DB;
+  --color-selection-closed: #F1C40F;
+  --color-cooking: #E67E22;
+  --color-completed: #27AE60;
+
+  /* 中性色 */
+  --color-text: #2C3E50;
+  --color-text-secondary: #7F8C8D;
+  --color-text-light: #BDC3C7;
+  --color-border: #ECF0F1;
+  --color-bg: #FFF8F0;
+  --color-bg-white: #FFFFFF;
+  --color-bg-gray: #F7F9FA;
+
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* 圆角 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* 字体 */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 22px;
+  --font-size-xxl: 28px;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.12);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.15);
+
+  /* 底部导航高度 */
+  --bottom-nav-height: 56px;
+}
