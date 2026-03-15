@@ -507,3 +507,221 @@ describe('Coverage - FileSystemStorage', () => {
     expect(obj!.httpMetadata.contentType).toBe('application/octet-stream');
   });
 });
+
+function createJpegFile(name = 'test.jpg', size = 100): File {
+  const data = new Uint8Array(size);
+  data[0] = 0xFF; data[1] = 0xD8; data[2] = 0xFF; // JPEG magic
+  return new File([data], name, { type: 'image/jpeg' });
+}
+
+describe('Coverage - Dish photo routes', () => {
+  let db: SqliteD1Database;
+  let storage: FileSystemStorage;
+  let cleanup: () => void;
+  let env: Env;
+  let token: string;
+  let userId: string;
+
+  beforeEach(async () => {
+    db = createTestDb();
+    const s = createTestStorage();
+    storage = s.storage;
+    cleanup = s.cleanup;
+    env = await createEnv(db, storage);
+    userId = await seedUser(db, { username: 'chef' });
+    token = await getToken(userId, 'chef');
+    await db.prepare("INSERT INTO dishes (id, name, created_by) VALUES ('d1', '红烧肉', ?)").bind(userId).run();
+  });
+
+  afterEach(() => cleanup());
+
+  it('POST /dishes/:id/photos should upload photo', async () => {
+    const app = await getApp();
+    const formData = new FormData();
+    formData.append('file', createJpegFile());
+    const res = await app.request('/api/v1/dishes/d1/photos', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }, env);
+    expect(res.status).toBe(201);
+    const body = await res.json() as any;
+    expect(body.url).toContain('/api/v1/photos/');
+  });
+
+  it('PUT /dishes/:id/default-photo should set default', async () => {
+    // First upload a photo
+    const photoId = crypto.randomUUID().replace(/-/g, '');
+    await db.prepare("INSERT INTO dish_photos (id, dish_id, photo_url, uploaded_by) VALUES (?, 'd1', '/test.jpg', ?)").bind(photoId, userId).run();
+
+    const app = await getApp();
+    const res = await app.request('/api/v1/dishes/d1/default-photo', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ photoId }),
+    }, env);
+    expect(res.status).toBe(200);
+  });
+
+  it('PUT /dishes/:id/default-photo should reject missing photoId', async () => {
+    const app = await getApp();
+    const res = await app.request('/api/v1/dishes/d1/default-photo', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({}),
+    }, env);
+    expect(res.status).toBe(400);
+  });
+
+  it('DELETE /dishes/:id/photos/:photoId should delete', async () => {
+    const photoId = crypto.randomUUID().replace(/-/g, '');
+    await storage.put(`dishes/d1/${photoId}`, 'data');
+    await db.prepare("INSERT INTO dish_photos (id, dish_id, photo_url, uploaded_by) VALUES (?, 'd1', '/test.jpg', ?)").bind(photoId, userId).run();
+
+    const app = await getApp();
+    const res = await app.request(`/api/v1/dishes/d1/photos/${photoId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }, env);
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('Coverage - Upload image (general)', () => {
+  let db: SqliteD1Database;
+  let storage: FileSystemStorage;
+  let cleanup: () => void;
+  let env: Env;
+  let token: string;
+
+  beforeEach(async () => {
+    db = createTestDb();
+    const s = createTestStorage();
+    storage = s.storage;
+    cleanup = s.cleanup;
+    env = await createEnv(db, storage);
+    const userId = await seedUser(db, { username: 'uploader' });
+    token = await getToken(userId, 'uploader');
+  });
+
+  afterEach(() => cleanup());
+
+  it('POST /uploads/image should upload and return url', async () => {
+    const app = await getApp();
+    const formData = new FormData();
+    formData.append('file', createJpegFile());
+    const res = await app.request('/api/v1/uploads/image', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }, env);
+    expect(res.status).toBe(201);
+    const body = await res.json() as any;
+    expect(body.url).toContain('/api/v1/photos/uploads/');
+  });
+
+  it('POST /uploads/image should reject no file', async () => {
+    const app = await getApp();
+    const formData = new FormData();
+    const res = await app.request('/api/v1/uploads/image', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }, env);
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /uploads/image should reject invalid type', async () => {
+    const app = await getApp();
+    const formData = new FormData();
+    formData.append('file', new File(['test'], 'doc.txt', { type: 'text/plain' }));
+    const res = await app.request('/api/v1/uploads/image', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }, env);
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /uploads/image should reject bad magic bytes', async () => {
+    const app = await getApp();
+    const formData = new FormData();
+    // File with correct MIME type but wrong content
+    formData.append('file', new File([new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])], 'fake.jpg', { type: 'image/jpeg' }));
+    const res = await app.request('/api/v1/uploads/image', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }, env);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('Coverage - Menu validation branches', () => {
+  let db: SqliteD1Database;
+  let env: Env;
+  let token: string;
+  let userId: string;
+
+  beforeEach(async () => {
+    db = createTestDb();
+    env = await createEnv(db);
+    userId = await seedUser(db, { username: 'chef' });
+    token = await getToken(userId, 'chef');
+  });
+
+  it('POST /menus should reject invalid mealType', async () => {
+    const otherId = await seedUser(db, { username: 'guest' });
+    const app = await getApp();
+    const res = await app.request('/api/v1/menus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        title: '测试', mealType: 'invalid', mealTime: new Date().toISOString(),
+        deadline: new Date().toISOString(), inviteeIds: [otherId],
+      }),
+    }, env);
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /menus should reject title > 100 chars', async () => {
+    const otherId = await seedUser(db, { username: 'guest' });
+    const app = await getApp();
+    const res = await app.request('/api/v1/menus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        title: 'x'.repeat(101), mealType: 'dinner', mealTime: new Date().toISOString(),
+        deadline: new Date().toISOString(), inviteeIds: [otherId],
+      }),
+    }, env);
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /menus should reject invalid date', async () => {
+    const otherId = await seedUser(db, { username: 'guest' });
+    const app = await getApp();
+    const res = await app.request('/api/v1/menus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        title: '测试', mealType: 'dinner', mealTime: 'not-a-date',
+        deadline: new Date().toISOString(), inviteeIds: [otherId],
+      }),
+    }, env);
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /menus should reject missing invitees', async () => {
+    const app = await getApp();
+    const res = await app.request('/api/v1/menus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        title: '测试', mealType: 'dinner', mealTime: new Date().toISOString(),
+        deadline: new Date().toISOString(),
+      }),
+    }, env);
+    expect(res.status).toBe(400);
+  });
+});

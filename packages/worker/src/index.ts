@@ -13,6 +13,7 @@ import { selectionRoutes } from './routes/selections.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { pollRoutes } from './routes/poll.js';
 import { ingredientCategoryRoutes } from './routes/ingredient-categories.js';
+import { uploadRoutes } from './routes/uploads.js';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -41,6 +42,7 @@ app.route('/api/v1/tags', tagRoutes);
 app.route('/api/v1/menus', menuRoutes);
 app.route('/api/v1/notifications', notificationRoutes);
 app.route('/api/v1/poll', pollRoutes);
+app.route('/api/v1/uploads', uploadRoutes);
 
 // 404
 app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: '接口不存在' } }, 404));

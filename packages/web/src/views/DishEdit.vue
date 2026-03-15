@@ -7,8 +7,7 @@
       </div>
       <div class="form-group">
         <label>描述 / 做法</label>
-        <div class="desc-hint">支持 Markdown 格式：**粗体**、*斜体*、- 列表、## 标题</div>
-        <textarea class="input textarea" v-model="form.description" rows="8"></textarea>
+        <MarkdownEditor v-model="form.description" :dish-id="dishId" placeholder="食材用量、烹饪步骤、口味偏好等（支持图文混排）" :rows="8" />
       </div>
 
       <div class="form-group">
@@ -51,6 +50,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '@/api/client';
 import AppLayout from '@/components/AppLayout.vue';
+import MarkdownEditor from '@/components/MarkdownEditor.vue';
 import { toPinyin, toPinyinInitial } from '@/utils/pinyin';
 
 const route = useRoute();
@@ -128,8 +128,6 @@ onMounted(async () => {
 .form { display: flex; flex-direction: column; gap: var(--spacing-md); }
 .form-group { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 .form-group label { font-size: var(--font-size-sm); color: var(--color-text-secondary); font-weight: 500; }
-.textarea { min-height: 160px; resize: vertical; font-family: monospace; line-height: 1.6; }
-.desc-hint { font-size: var(--font-size-xs); color: var(--color-text-tertiary); }
 .chip-select { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); }
 .chip {
   padding: 4px 12px; border-radius: var(--radius-full);

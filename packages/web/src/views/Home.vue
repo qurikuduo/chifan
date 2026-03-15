@@ -9,19 +9,31 @@
     </div>
 
     <div class="menu-list">
-      <router-link v-for="m in menus" :key="m.id" :to="`/menus/${m.id}`" class="menu-card card">
-        <div class="menu-header">
-          <strong>{{ m.title }}</strong>
-          <span :class="['badge', `badge-${m.status}`]">{{ statusLabel[m.status] ?? m.status }}</span>
+      <div v-if="loading" class="loading-skeletons">
+        <div v-for="i in 3" :key="i" class="skeleton-card card">
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line"></div>
         </div>
-        <div class="menu-meta">
-          <span>{{ mealLabel[m.mealType] ?? m.mealType }}</span>
-          <span>{{ m.mealTime?.substring(0, 16) }}</span>
-          <span>{{ m.dishCount }}道菜</span>
-          <span>{{ m.completedInvitees }}/{{ m.totalInvitees }}人已选</span>
+      </div>
+      <template v-else>
+        <router-link v-for="m in menus" :key="m.id" :to="`/menus/${m.id}`" class="menu-card card">
+          <div class="menu-header">
+            <strong>{{ m.title }}</strong>
+            <span :class="['badge', `badge-${m.status}`]">{{ statusLabel[m.status] ?? m.status }}</span>
+          </div>
+          <div class="menu-meta">
+            <span>{{ mealLabel[m.mealType] ?? m.mealType }}</span>
+            <span>{{ m.mealTime?.substring(0, 16) }}</span>
+            <span>{{ m.dishCount }}道菜</span>
+            <span>{{ m.completedInvitees }}/{{ m.totalInvitees }}人已选</span>
+          </div>
+        </router-link>
+        <div v-if="menus.length === 0" class="empty">
+          <div class="empty-icon">📋</div>
+          <p>暂无菜单</p>
+          <p class="empty-hint">点击上方按钮创建第一个菜单吧</p>
         </div>
-      </router-link>
-      <div v-if="menus.length === 0 && !loading" class="empty">暂无菜单</div>
+      </template>
     </div>
   </AppLayout>
 </template>
@@ -85,4 +97,15 @@ onMounted(load);
 .badge-cooking { background: #ffccbc; color: #bf360c; }
 .badge-completed { background: #c8e6c9; color: #1b5e20; }
 .empty { text-align: center; color: var(--color-text-secondary); padding: var(--spacing-xl); }
+.empty-icon { font-size: 48px; margin-bottom: var(--spacing-sm); }
+.empty-hint { font-size: var(--font-size-sm); color: var(--color-text-light); margin-top: var(--spacing-xs); }
+.loading-skeletons { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.skeleton-card { padding: var(--spacing-md); }
+.skeleton-line {
+  height: 14px; border-radius: 4px; margin-bottom: var(--spacing-sm);
+  background: linear-gradient(90deg, var(--color-bg-gray) 25%, var(--color-border) 50%, var(--color-bg-gray) 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; width: 50%;
+}
+.skeleton-line.wide { width: 80%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>

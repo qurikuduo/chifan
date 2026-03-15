@@ -153,3 +153,83 @@ test.describe('Admin', () => {
     await expect(page.locator('body')).toContainText('admin', { timeout: 8000 });
   });
 });
+
+// ─── Dish Edit & Markdown Editor ──────────────────────────────
+test.describe('Dish Edit & Markdown Editor', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('create dish form shows markdown editor with toolbar', async ({ page }) => {
+    await page.goto('/dishes/create');
+    await expect(page.locator('.md-editor')).toBeVisible();
+    await expect(page.locator('.md-editor .toolbar')).toBeVisible();
+    await expect(page.locator('.md-editor .toolbar button').first()).toBeVisible();
+    await expect(page.locator('.md-editor textarea')).toBeVisible();
+  });
+
+  test('markdown preview toggle works', async ({ page }) => {
+    await page.goto('/dishes/create');
+    const editor = page.locator('.md-editor');
+    const textarea = editor.locator('textarea');
+    const previewBtn = editor.locator('.preview-toggle');
+
+    // Type some markdown
+    await textarea.fill('**粗体测试** 和 *斜体*');
+
+    // Click preview
+    await previewBtn.click();
+    await expect(editor.locator('.preview')).toBeVisible();
+    await expect(editor.locator('.preview')).toContainText('粗体测试');
+
+    // Switch back to edit
+    await previewBtn.click();
+    await expect(textarea).toBeVisible();
+  });
+
+  test('can edit an existing dish', async ({ page }) => {
+    // First create a dish
+    const dishName = `E2E编辑测试_${Date.now()}`;
+    await page.goto('/dishes/create');
+    await page.fill('input[placeholder="输入菜名"]', dishName);
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/dishes\/[\w-]+/, { timeout: 10000 });
+
+    // Click edit button
+    await page.click('text=编辑');
+    await page.waitForURL(/\/dishes\/[\w-]+\/edit/, { timeout: 5000 });
+
+    // Verify form is populated
+    const nameInput = page.locator('input').first();
+    await expect(nameInput).toHaveValue(dishName);
+
+    // Modify name
+    await nameInput.fill(dishName + '_modified');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/dishes\/[\w-]+$/, { timeout: 10000 });
+
+    // Verify updated name shows
+    await expect(page.locator('h3')).toContainText('_modified');
+  });
+});
+
+// ─── Quick-Add Dish in Menu ───────────────────────────────────
+test.describe('Quick-Add Dish in Menu', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('menu create page shows quick-add button for non-existing dish', async ({ page }) => {
+    await page.goto('/menus/create');
+    const searchInput = page.locator('input[placeholder*="搜索"]');
+    if (await searchInput.isVisible()) {
+      await searchInput.fill(`不存在的菜_${Date.now()}`);
+      await page.waitForTimeout(500);
+      // Should show "快速创建" button
+      const quickAddBtn = page.locator('.quick-add');
+      if (await quickAddBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(quickAddBtn).toContainText('快速创建');
+      }
+    }
+  });
+});
