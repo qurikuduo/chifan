@@ -1,4 +1,4 @@
-// 密码哈希工具 - 使用 Web Crypto API（Cloudflare Workers 兼容）
+// 密码哈希工具 - 使用 Web Crypto API
 // 采用 PBKDF2 算法
 
 const ITERATIONS = 100_000;

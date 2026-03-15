@@ -2,14 +2,15 @@
 
 一个专为家庭设计的用餐协作网站。厨师创建菜单，家人选菜，厨师根据结果做菜并通知开饭。
 
-## 🌐 在线访问
+## 🌐 快速部署
 
-| 服务 | 地址 |
-|------|------|
-| **前端应用** | https://family-menu-jdx.pages.dev |
-| **后端 API** | https://family-menu-api.sixiweb.workers.dev |
+```bash
+# Docker 一键启动
+docker compose up -d
 
-> 默认管理员：用户名 `admin`，密码 `admin123456`。首次登录后请立即修改密码。
+# 访问 http://localhost:8787
+# 默认管理员：用户名 admin，密码 admin123456
+```
 
 ## 功能特色
 
@@ -51,13 +52,13 @@
 | 层级 | 技术 |
 |------|------|
 | 前端 | Vue 3.5 + Vite 5.4 + Pinia 2.2 + Vue Router 4.4 |
-| 后端 | Hono 4.6 on Cloudflare Workers |
-| 数据库 | Cloudflare D1 (SQLite) |
-| 存储 | Cloudflare R2 (图片) |
+| 后端 | Hono 4.6 on Node.js |
+| 数据库 | SQLite (better-sqlite3) |
+| 存储 | 本地文件系统 (图片) |
 | 认证 | JWT (jose, HS256, 7天有效期) |
 | 密码 | PBKDF2 (100000 次迭代) |
 | 测试 | Vitest + Playwright |
-| 部署 | Cloudflare Pages (前端) + Workers (后端) |
+| 部署 | Docker + GitHub Actions |
 
 ### 前端额外依赖
 - `pinyin-pro` — 中文拼音转换
@@ -72,7 +73,7 @@ family-menu/
 ├── packages/
 │   ├── shared/           # 共享类型定义
 │   │   └── src/types/    # TypeScript 接口 (user, dish, menu, notification)
-│   ├── worker/           # 后端 API (Cloudflare Workers)
+│   ├── worker/           # 后端 API (Node.js + Hono)
 │   │   └── src/
 │   │       ├── db/           # 数据库 schema 和 seed
 │   │       ├── middleware/   # 认证中间件
@@ -119,9 +120,8 @@ push_subscriptions
 ## 快速开始
 
 ### 前置条件
-- Node.js 18+
+- Node.js 20+
 - pnpm 10+
-- Cloudflare 账号（部署用；本地开发可用 `wrangler dev`）
 
 ### 安装
 
@@ -137,15 +137,11 @@ pnpm install
 ### 本地开发
 
 ```bash
-# 1. 初始化本地数据库
-pnpm --filter @family-menu/worker db:migrate
-pnpm --filter @family-menu/worker db:seed
+# 1. 启动后端 (端口 8787，自动初始化数据库)
+pnpm dev:worker
 
-# 2. 启动后端 (端口 8787)
-pnpm --filter @family-menu/worker dev
-
-# 3. 启动前端 (端口 5173 或 5174)
-pnpm --filter @family-menu/web dev
+# 2. 启动前端 (端口 5173，自动代理 /api 到后端)
+pnpm dev:web
 ```
 
 ### 默认账号
@@ -242,142 +238,54 @@ draft → published → selection_closed → cooking → completed
 
 ## 部署
 
-### 前置条件
-
-1. **Cloudflare 账号**：注册 [Cloudflare](https://dash.cloudflare.com/sign-up) 并开通 Workers 计划（Free 计划即可）
-2. **Wrangler CLI**：`npm install -g wrangler`（已包含在 devDependencies 中，也可全局安装）
-3. **登录 Cloudflare**：
-   ```bash
-   wrangler login
-   # 浏览器会打开授权页面，点击"Allow"完成登录
-   ```
-
-### 步骤一：创建云端资源
+### Docker 部署（推荐）
 
 ```bash
-# 1. 创建 D1 数据库
-wrangler d1 create family-menu-db
-# 输出示例：
-# ✅ Successfully created DB 'family-menu-db'
-# database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# 1. 构建并启动
+docker compose up -d
 
-# 2. 创建 R2 存储桶（存储菜品照片）
-wrangler r2 bucket create family-menu-photos
+# 2. 自定义环境变量
+docker compose up -d \
+  -e JWT_SECRET=$(openssl rand -hex 32) \
+  -e ADMIN_PASSWORD=your-secure-password \
+  -e CORS_ORIGIN=https://your-domain.com
 ```
 
-### 步骤二：更新配置
+数据持久化在 Docker volume `app-data` 中（SQLite 数据库 + 上传的照片）。
 
-编辑 `packages/worker/wrangler.toml`，将 `database_id` 替换为上一步输出的实际值：
+### 环境变量
 
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "family-menu-db"
-database_id = "替换为实际的 database_id"  # ← 修改这里
-```
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `PORT` | `8787` | 服务端口 |
+| `JWT_SECRET` | `dev-secret-change-me` | JWT 签名密钥（生产环境必须修改） |
+| `CORS_ORIGIN` | `*` | 允许的前端域名 |
+| `ADMIN_PASSWORD` | `admin123456` | 首次初始化时的管理员密码 |
+| `DB_PATH` | `./data/family-menu.db` | SQLite 数据库文件路径 |
+| `PHOTOS_PATH` | `./data/photos` | 照片存储目录 |
 
-### 步骤三：初始化远程数据库
+### GitHub Actions CI/CD
+
+项目包含 `.github/workflows/docker.yml`，会在推送到 `main` 分支时自动：
+1. 运行所有测试
+2. 构建 Docker 镜像
+3. 推送到 GitHub Container Registry (ghcr.io)
 
 ```bash
-# 执行数据库迁移（创建表结构）
-cd packages/worker
-wrangler d1 execute family-menu-db --remote --file=src/db/schema.sql
-
-# 初始化种子数据（创建管理员账号、默认标签等）
-wrangler d1 execute family-menu-db --remote --file=src/db/seed.sql
+# 拉取并运行最新镜像
+docker pull ghcr.io/<your-username>/codextest:main
+docker run -d -p 8787:8787 -v app-data:/app/data \
+  -e JWT_SECRET=your-secret \
+  ghcr.io/<your-username>/codextest:main
 ```
-
-> ⚠️ seed.sql 会创建默认管理员：用户名 `admin`，密码 `admin123456`。请部署后立即修改密码。
-
-### 步骤四：设置生产环境密钥
-
-```bash
-# 设置 JWT 签名密钥（填一个随机字符串，不要用默认值）
-wrangler secret put JWT_SECRET
-# 系统会提示输入密钥值，建议使用 32+ 位随机字符串
-# 可用命令生成: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-
-# 设置 CORS 允许的前端域名
-wrangler secret put CORS_ORIGIN
-# 输入前端部署后的域名，如: https://family-menu.pages.dev
-```
-
-### 步骤五：部署后端 (Cloudflare Workers)
-
-```bash
-cd packages/worker
-pnpm deploy
-# 或: wrangler deploy
-# 部署成功后会输出 Worker 的 URL，如:
-# https://family-menu-api.你的子域名.workers.dev
-```
-
-### 步骤六：部署前端 (Cloudflare Pages)
-
-```bash
-# 方式一：通过 CLI（推荐首次使用）
-cd packages/web
-
-# 先修改 vite.config.ts 中的 API 代理指向生产环境 Worker URL
-# 或者使用环境变量方式配置 API 地址
-
-# 构建前端
-pnpm build
-
-# 部署到 Cloudflare Pages
-wrangler pages deploy dist --project-name=family-menu
-# 首次部署会提示创建项目，选择 "Create a new project"
-# 部署成功后输出访问地址，如:
-# https://family-menu.pages.dev
-```
-
-```bash
-# 方式二：通过 Cloudflare Dashboard
-# 1. 登录 https://dash.cloudflare.com
-# 2. 左侧菜单 Workers & Pages → Create → Pages → Upload assets
-# 3. 将 packages/web/dist 目录上传
-```
-
-### 步骤七：配置前端 API 代理
-
-前端的 `/api` 请求通过 Cloudflare Pages Functions 代理到 Worker。项目已包含 `functions/api/[[path]].ts` 代理函数，部署时会自动启用。
-
-代理文件位置：`packages/web/functions/api/[[path]].ts`
-
-> 如需更改 Worker URL，编辑该文件中的 `workerUrl` 变量即可。
 
 ### 生产环境检查清单
 
-- [ ] `database_id` 已替换为实际 D1 数据库 ID
-- [ ] `JWT_SECRET` 已设置为安全的随机字符串（非默认值）
+- [ ] `JWT_SECRET` 已设置为安全的随机字符串
 - [ ] `CORS_ORIGIN` 已设置为前端实际域名
-- [ ] 管理员密码已修改
-- [ ] 前端 API 代理已正确配置
-- [ ] R2 存储桶已创建并绑定
-
-### 自定义域名（可选）
-
-```bash
-# 1. 在 Cloudflare Dashboard 添加你的域名
-# 2. Worker API 绑定自定义路由：
-wrangler route add "api.你的域名.com/*" family-menu-api
-
-# 3. Pages 前端绑定自定义域名：
-#    Dashboard → Pages → 你的项目 → Custom domains → Add
-```
-
-### 更新部署
-
-```bash
-# 更新后端
-cd packages/worker && pnpm deploy
-
-# 更新前端
-cd packages/web && pnpm build && pnpm deploy
-
-# 更新数据库结构（如有 schema 变更）
-wrangler d1 execute family-menu-db --remote --file=src/db/schema.sql
-```
+- [ ] `ADMIN_PASSWORD` 已设置为安全密码
+- [ ] 管理员登录后已修改默认密码
+- [ ] 数据目录已配置持久化存储
 
 ## 测试
 
