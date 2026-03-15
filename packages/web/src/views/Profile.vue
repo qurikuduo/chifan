@@ -16,6 +16,7 @@
     <div class="profile-actions">
       <router-link to="/profile/edit" class="btn btn-secondary btn-block">编辑个人信息</router-link>
       <router-link to="/profile/password" class="btn btn-secondary btn-block">修改密码</router-link>
+      <router-link to="/profile/preferences" class="btn btn-secondary btn-block">🍽 饮食偏好设置</router-link>
       <router-link to="/help" class="btn btn-secondary btn-block">📖 使用帮助</router-link>
       <router-link v-if="auth.isAdmin" to="/admin" class="btn btn-secondary btn-block">管理后台</router-link>
       <button class="btn btn-danger btn-block" @click="handleLogout">退出登录</button>

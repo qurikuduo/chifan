@@ -16,7 +16,16 @@
       >{{ t.name }}</button>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="skeleton-list">
+      <div v-for="i in 5" :key="i" class="dish-card card skeleton-card">
+        <div class="dish-photo skeleton-shimmer"></div>
+        <div class="dish-info">
+          <div class="skeleton-line skeleton-shimmer" style="width:60%;height:18px;margin-bottom:6px"></div>
+          <div class="skeleton-line skeleton-shimmer" style="width:80%;height:14px;margin-bottom:6px"></div>
+          <div class="skeleton-line skeleton-shimmer" style="width:40%;height:12px"></div>
+        </div>
+      </div>
+    </div>
 
     <div v-else class="dish-list">
       <router-link v-for="dish in dishes" :key="dish.id" :to="`/dishes/${dish.id}`" class="dish-card card">
@@ -33,7 +42,10 @@
         </div>
       </router-link>
 
-      <div v-if="dishes.length === 0" class="empty">暂无菜品</div>
+      <div v-if="dishes.length === 0" class="empty">
+        <div class="empty-icon">📝</div>
+        <p>还没有菜品，点右上角「+ 新增」添加第一道菜吧</p>
+      </div>
     </div>
 
     <div v-if="totalPages > 1" class="pagination">
@@ -117,18 +129,20 @@ onMounted(() => {
   background: var(--color-bg-white);
   font-size: var(--font-size-xs);
   cursor: pointer;
+  transition: all 0.2s;
 }
 .chip.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
 
-.dish-list { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.dish-list, .skeleton-list { display: flex; flex-direction: column; gap: var(--spacing-sm); }
 
 .dish-card {
   display: flex;
   gap: var(--spacing-md);
   text-decoration: none;
   color: inherit;
+  transition: box-shadow 0.2s, transform 0.15s;
 }
-.dish-card:hover { box-shadow: var(--shadow-md); }
+.dish-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 
 .dish-photo {
   width: 72px;
@@ -158,7 +172,19 @@ onMounted(() => {
 }
 
 .btn-sm { padding: 4px 10px; font-size: var(--font-size-xs); }
+
 .empty { text-align: center; color: var(--color-text-secondary); padding: var(--spacing-xl); }
-.loading { text-align: center; color: var(--color-text-secondary); padding: var(--spacing-xl); }
+.empty-icon { font-size: 48px; margin-bottom: var(--spacing-sm); }
+
 .pagination { display: flex; justify-content: center; align-items: center; gap: var(--spacing-md); margin-top: var(--spacing-md); }
+
+/* Skeleton shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--color-bg-gray) 25%, var(--color-border) 50%, var(--color-bg-gray) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+.skeleton-line { border-radius: 4px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>

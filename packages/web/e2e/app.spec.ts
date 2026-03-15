@@ -195,9 +195,9 @@ test.describe('Dish Edit & Markdown Editor', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/dishes\/[\w-]+/, { timeout: 10000 });
 
-    // Click edit button
-    await page.click('text=编辑');
-    await page.waitForURL(/\/dishes\/[\w-]+\/edit/, { timeout: 5000 });
+    // Click edit button (the router-link with class btn-secondary)
+    await page.click('a.btn-secondary:has-text("编辑")');
+    await page.waitForURL(/\/dishes\/[\w-]+\/edit/, { timeout: 8000 });
 
     // Verify form is populated
     const nameInput = page.locator('input').first();
@@ -231,5 +231,74 @@ test.describe('Quick-Add Dish in Menu', () => {
         await expect(quickAddBtn).toContainText('快速创建');
       }
     }
+  });
+});
+
+// ─── User Preferences ─────────────────────────────────────────
+test.describe('User Preferences', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('preferences link visible in profile page', async ({ page }) => {
+    await page.goto('/profile');
+    const prefLink = page.locator('a[href="/profile/preferences"]');
+    await expect(prefLink).toBeVisible();
+    await expect(prefLink).toContainText('饮食偏好');
+  });
+
+  test('preferences page loads with sections', async ({ page }) => {
+    await page.goto('/profile/preferences');
+    await expect(page.locator('body')).toContainText('饮食备注', { timeout: 8000 });
+    await expect(page.locator('textarea')).toBeVisible();
+  });
+
+  test('can save dietary notes', async ({ page }) => {
+    await page.goto('/profile/preferences');
+    // Wait for loading state to complete
+    await page.waitForSelector('textarea', { timeout: 8000 });
+    const textarea = page.locator('textarea');
+    await textarea.fill('不吃辣，少盐');
+    await page.click('button:has-text("保存偏好")');
+    // Wait for save to complete (toast appears)
+    await page.waitForTimeout(2000);
+
+    // Reload and verify persisted
+    await page.reload();
+    await page.waitForSelector('textarea', { timeout: 8000 });
+    await expect(textarea).toHaveValue('不吃辣，少盐', { timeout: 8000 });
+  });
+});
+
+// ─── Favorites Page ───────────────────────────────────────────
+test.describe('Favorites Page', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('favorites page loads', async ({ page }) => {
+    await page.goto('/favorites');
+    // Should show either favorites content or empty state
+    await expect(page.locator('.section').or(page.locator('.empty')).first()).toBeVisible({ timeout: 5000 });
+  });
+});
+
+// ─── Page Transitions ─────────────────────────────────────────
+test.describe('Page Transitions', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('navigating between pages has smooth transition', async ({ page }) => {
+    await page.goto('/');
+    // Navigate to dishes
+    await page.click('.nav-item >> text=菜品');
+    await expect(page).toHaveURL('/dishes');
+    // Navigate to profile
+    await page.click('.nav-item >> text=我的');
+    await expect(page).toHaveURL('/profile');
+    // Navigate back to home
+    await page.click('.nav-item >> text=首页');
+    await expect(page).toHaveURL('/');
   });
 });

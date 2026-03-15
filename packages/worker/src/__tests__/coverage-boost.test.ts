@@ -10,7 +10,7 @@
  * - Storage adapter
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createTestDb, createTestStorage, seedUser, seedCategory } from './helpers/test-db.js';
+import { createTestDb, createTestStorage, seedUser, seedCategory, seedIngredient } from './helpers/test-db.js';
 import { SqliteD1Database } from '../adapters/sqlite.js';
 import { FileSystemStorage } from '../adapters/storage.js';
 import { signToken } from '../middleware/auth.js';
@@ -723,5 +723,132 @@ describe('Coverage - Menu validation branches', () => {
       }),
     }, env);
     expect(res.status).toBe(400);
+  });
+});
+
+describe('Coverage - User Preferences', () => {
+  let db: SqliteD1Database;
+  let env: Env;
+  let token: string;
+  let userId: string;
+
+  beforeEach(async () => {
+    db = createTestDb();
+    env = await createEnv(db);
+    userId = await seedUser(db, { username: 'prefuser' });
+    token = await getToken(userId, 'prefuser');
+  });
+
+  it('GET /users/me/preferences should return default prefs', async () => {
+    const app = await getApp();
+    const res = await app.request('/api/v1/users/me/preferences', {
+      headers: { Authorization: `Bearer ${token}` },
+    }, env);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.dietaryNotes).toBe('');
+    expect(body.allergens).toEqual([]);
+  });
+
+  it('PUT /users/me/preferences should save dietary notes', async () => {
+    const app = await getApp();
+    const res = await app.request('/api/v1/users/me/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ dietaryNotes: '不吃辣' }),
+    }, env);
+    expect(res.status).toBe(200);
+
+    const getRes = await app.request('/api/v1/users/me/preferences', {
+      headers: { Authorization: `Bearer ${token}` },
+    }, env);
+    const body = await getRes.json() as any;
+    expect(body.dietaryNotes).toBe('不吃辣');
+  });
+
+  it('PUT /users/me/preferences should save allergens', async () => {
+    const catId = await seedCategory(db, '调料');
+    const ing1 = await seedIngredient(db, '花生', catId);
+    const ing2 = await seedIngredient(db, '虾', catId);
+    const app = await getApp();
+
+    const res = await app.request('/api/v1/users/me/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ allergenIds: [ing1, ing2] }),
+    }, env);
+    expect(res.status).toBe(200);
+
+    const getRes = await app.request('/api/v1/users/me/preferences', {
+      headers: { Authorization: `Bearer ${token}` },
+    }, env);
+    const body = await getRes.json() as any;
+    expect(body.allergens).toHaveLength(2);
+    expect(body.allergens.map((a: any) => a.name).sort()).toEqual(['花生', '虾'].sort());
+  });
+
+  it('PUT should update allergens (replace old ones)', async () => {
+    const catId = await seedCategory(db, '海鲜');
+    const ing1 = await seedIngredient(db, '螃蟹', catId);
+    const ing2 = await seedIngredient(db, '龙虾', catId);
+    const app = await getApp();
+
+    // Set first allergen
+    await app.request('/api/v1/users/me/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ allergenIds: [ing1] }),
+    }, env);
+
+    // Replace with second allergen
+    await app.request('/api/v1/users/me/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ allergenIds: [ing2] }),
+    }, env);
+
+    const getRes = await app.request('/api/v1/users/me/preferences', {
+      headers: { Authorization: `Bearer ${token}` },
+    }, env);
+    const body = await getRes.json() as any;
+    expect(body.allergens).toHaveLength(1);
+    expect(body.allergens[0].name).toBe('龙虾');
+  });
+
+  it('GET /users/preferences/all should return all family prefs', async () => {
+    const user2 = await seedUser(db, { username: 'family2', displayName: '家人' });
+    const token2 = await getToken(user2, 'family2');
+    const catId = await seedCategory(db, '坚果');
+    const ing = await seedIngredient(db, '腰果', catId);
+    const app = await getApp();
+
+    // User 1: set dietary notes
+    await app.request('/api/v1/users/me/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ dietaryNotes: '素食主义' }),
+    }, env);
+
+    // User 2: set allergen
+    await app.request('/api/v1/users/me/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token2}` },
+      body: JSON.stringify({ allergenIds: [ing] }),
+    }, env);
+
+    const res = await app.request('/api/v1/users/preferences/all', {
+      headers: { Authorization: `Bearer ${token}` },
+    }, env);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeGreaterThanOrEqual(2);
+
+    const u1 = body.find((p: any) => p.displayName === 'prefuser');
+    expect(u1.dietaryNotes).toBe('素食主义');
+
+    const u2 = body.find((p: any) => p.displayName === '家人');
+    expect(u2.allergens).toHaveLength(1);
+    expect(u2.allergens[0].name).toBe('腰果');
   });
 });

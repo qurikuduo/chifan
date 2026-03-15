@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd d:\\\\projects\\\\AICoding\\\\codextest\\\\packages\\\\web; npx vite --host$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

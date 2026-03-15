@@ -125,7 +125,7 @@ input, textarea, select {
   transform: scale(0.98);
 }
 
-/* 输入框暗色模式（可选） */
+/* 输入框暗色模式 */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-bg: #1a1a2e;
@@ -133,7 +133,27 @@ input, textarea, select {
     --color-bg-gray: #0f3460;
     --color-text: #e6e6e6;
     --color-text-secondary: #a0a0b0;
+    --color-text-tertiary: #6b7080;
     --color-border: #2a3a5e;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.35);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.45);
+  }
+
+  img {
+    opacity: 0.9;
+  }
+
+  .btn-secondary {
+    background: var(--color-bg-gray);
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+
+  .input, textarea.input, select.input {
+    background: var(--color-bg-gray);
+    color: var(--color-text);
+    border-color: var(--color-border);
   }
 }
 

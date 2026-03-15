@@ -299,6 +299,85 @@ export class UserService {
       avatarUrl: u.avatar_url,
     }));
   }
+
+  async getPreferences(userId: string) {
+    const pref = await this.db
+      .prepare('SELECT dietary_notes FROM user_preferences WHERE user_id = ?')
+      .bind(userId)
+      .first<{ dietary_notes: string | null }>();
+
+    const allergens = await this.db
+      .prepare(
+        `SELECT i.id, i.name FROM user_allergens ua
+         JOIN ingredients i ON ua.ingredient_id = i.id
+         WHERE ua.user_id = ?
+         ORDER BY i.name`
+      )
+      .bind(userId)
+      .all<{ id: string; name: string }>();
+
+    return {
+      dietaryNotes: pref?.dietary_notes ?? '',
+      allergens: allergens.results ?? [],
+    };
+  }
+
+  async updatePreferences(userId: string, data: { dietaryNotes?: string; allergenIds?: string[] }) {
+    // Upsert dietary notes
+    if (data.dietaryNotes !== undefined) {
+      await this.db
+        .prepare(
+          `INSERT INTO user_preferences (user_id, dietary_notes, updated_at)
+           VALUES (?, ?, datetime('now'))
+           ON CONFLICT(user_id) DO UPDATE SET dietary_notes = excluded.dietary_notes, updated_at = datetime('now')`
+        )
+        .bind(userId, data.dietaryNotes || null)
+        .run();
+    }
+
+    // Sync allergen ingredients
+    if (data.allergenIds !== undefined) {
+      await this.db.prepare('DELETE FROM user_allergens WHERE user_id = ?').bind(userId).run();
+      for (const ingredientId of data.allergenIds) {
+        await this.db
+          .prepare('INSERT OR IGNORE INTO user_allergens (user_id, ingredient_id) VALUES (?, ?)')
+          .bind(userId, ingredientId)
+          .run();
+      }
+    }
+  }
+
+  async getAllPreferences() {
+    const users = await this.db
+      .prepare(
+        `SELECT u.id, u.display_name, up.dietary_notes
+         FROM users u
+         LEFT JOIN user_preferences up ON u.id = up.user_id
+         WHERE u.status = 'approved'
+         ORDER BY u.created_at`
+      )
+      .all<{ id: string; display_name: string; dietary_notes: string | null }>();
+
+    const result = [];
+    for (const u of users.results ?? []) {
+      const allergens = await this.db
+        .prepare(
+          `SELECT i.id, i.name FROM user_allergens ua
+           JOIN ingredients i ON ua.ingredient_id = i.id
+           WHERE ua.user_id = ? ORDER BY i.name`
+        )
+        .bind(u.id)
+        .all<{ id: string; name: string }>();
+
+      result.push({
+        userId: u.id,
+        displayName: u.display_name,
+        dietaryNotes: u.dietary_notes ?? '',
+        allergens: allergens.results ?? [],
+      });
+    }
+    return result;
+  }
 }
 
 export class ServiceError extends Error {

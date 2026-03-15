@@ -1,6 +1,17 @@
 <template>
   <AppLayout title="口味偏好" :show-back="true">
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="skeleton-list">
+      <div class="section card" v-for="i in 2" :key="i">
+        <div class="skeleton-shimmer" style="width:40%;height:20px;margin-bottom:12px;border-radius:4px"></div>
+        <div v-for="j in 3" :key="j" class="fav-item">
+          <div class="skeleton-shimmer" style="width:24px;height:24px;border-radius:50%"></div>
+          <div style="flex:1">
+            <div class="skeleton-shimmer" style="width:60%;height:16px;border-radius:4px;margin-bottom:4px"></div>
+            <div class="skeleton-shimmer" style="width:80%;height:12px;border-radius:4px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <template v-else>
       <!-- 我的最爱 -->
@@ -111,5 +122,13 @@ onMounted(async () => {
 .fav-count { font-size: var(--font-size-sm); color: var(--color-primary); font-weight: 600; flex-shrink: 0; }
 
 .empty { color: var(--color-text-tertiary); font-size: var(--font-size-sm); text-align: center; padding: var(--spacing-md); }
-.loading { text-align: center; padding: var(--spacing-xl); color: var(--color-text-secondary); }
+
+/* Skeleton shimmer */
+.skeleton-list { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--color-bg-gray) 25%, var(--color-border) 50%, var(--color-bg-gray) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>

@@ -26,6 +26,30 @@ userRoutes.get('/family-members', async (c) => {
   return ok(c, members);
 });
 
+// GET /me/preferences - 获取我的饮食偏好
+userRoutes.get('/me/preferences', async (c) => {
+  const user = c.get('user');
+  const service = new UserService(c.env.DB);
+  const prefs = await service.getPreferences(user.sub);
+  return ok(c, prefs);
+});
+
+// PUT /me/preferences - 更新我的饮食偏好
+userRoutes.put('/me/preferences', async (c) => {
+  const user = c.get('user');
+  const body = await c.req.json<{ dietaryNotes?: string; allergenIds?: string[] }>();
+  const service = new UserService(c.env.DB);
+  await service.updatePreferences(user.sub, body);
+  return ok(c, { message: '偏好已更新' });
+});
+
+// GET /preferences/all - 获取所有家人的饮食偏好
+userRoutes.get('/preferences/all', async (c) => {
+  const service = new UserService(c.env.DB);
+  const result = await service.getAllPreferences();
+  return ok(c, result);
+});
+
 // POST / - 创建用户（管理员）
 userRoutes.post('/', adminMiddleware, async (c) => {
   const body = await c.req.json<{

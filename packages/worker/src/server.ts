@@ -56,6 +56,31 @@ if (existsSync(schemaPath)) {
   }
 }
 
+// --- Run incremental migrations ---
+const migrations: Array<{ table: string; sql: string }> = [
+  {
+    table: 'user_preferences',
+    sql: `CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      dietary_notes TEXT DEFAULT '',
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS user_allergens (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      ingredient_id TEXT NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, ingredient_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_allergens_ingredient ON user_allergens(ingredient_id);`,
+  },
+];
+for (const m of migrations) {
+  const exists = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(m.table).first();
+  if (!exists) {
+    console.log(`Migration: creating ${m.table}...`);
+    db.exec(m.sql);
+  }
+}
+
 // --- Initialize photo storage ---
 const photos = new FileSystemStorage(PHOTOS_PATH);
 

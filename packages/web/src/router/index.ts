@@ -82,6 +82,11 @@ const routes = [
     component: () => import('@/views/ProfileEdit.vue'),
   },
   {
+    path: '/profile/preferences',
+    name: 'Preferences',
+    component: () => import('@/views/Preferences.vue'),
+  },
+  {
     path: '/profile/password',
     name: 'ChangePassword',
     component: () => import('@/views/ChangePassword.vue'),

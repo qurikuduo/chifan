@@ -233,3 +233,20 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id);
+
+-- 用户饮食偏好表
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id             TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    dietary_notes       TEXT,
+    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 用户过敏食材关联表
+CREATE TABLE IF NOT EXISTS user_allergens (
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ingredient_id   TEXT NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, ingredient_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_allergens_user ON user_allergens(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_allergens_ingredient ON user_allergens(ingredient_id);

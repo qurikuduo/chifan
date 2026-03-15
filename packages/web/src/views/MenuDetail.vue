@@ -188,8 +188,8 @@ onMounted(load);
 .invitee-chip { padding: 4px 10px; border-radius: var(--radius-full); background: var(--color-bg-secondary); font-size: var(--font-size-sm); }
 .invitee-chip.done { background: #c8e6c9; color: #1b5e20; }
 .dish-list { display: flex; flex-direction: column; gap: var(--spacing-sm); }
-.dish-item { display: flex; gap: var(--spacing-sm); align-items: center; cursor: pointer; }
-.dish-item.selected { border-left: 3px solid var(--color-primary); }
+.dish-item { display: flex; gap: var(--spacing-sm); align-items: center; cursor: pointer; transition: all 0.2s; }
+.dish-item.selected { border-left: 3px solid var(--color-primary); background: rgba(230, 126, 34, 0.05); }
 .dish-photo { width: 60px; height: 60px; border-radius: var(--radius-sm); object-fit: cover; }
 .dish-info { flex: 1; display: flex; flex-direction: column; }
 .selection-info { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; font-size: var(--font-size-xs); color: var(--color-text-secondary); }
