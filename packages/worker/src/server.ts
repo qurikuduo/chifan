@@ -20,6 +20,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const STATIC_DIR = process.env.STATIC_DIR || '../web/dist';
 
+if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'dev-secret-change-me')) {
+  console.error('FATAL: JWT_SECRET must be set to a strong random value in production');
+  process.exit(1);
+}
+if (process.env.NODE_ENV === 'production' && CORS_ORIGIN === '*') {
+  console.warn('WARNING: CORS_ORIGIN is set to *, consider restricting to your domain');
+}
+
 // --- Initialize database ---
 const db = new SqliteD1Database(DB_PATH);
 

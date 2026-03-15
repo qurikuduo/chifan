@@ -247,17 +247,23 @@ draft → published → selection_closed → cooking → completed
 ### Docker 部署（推荐）
 
 ```bash
-# 1. 构建并启动
-docker compose up -d
-
-# 2. 自定义环境变量
-docker compose up -d \
+# 方式一：直接使用预构建镜像（最简）
+docker pull ghcr.io/qurikuduo/chifan:main
+docker run -d -p 8787:8787 -v chifan-data:/app/data \
   -e JWT_SECRET=$(openssl rand -hex 32) \
-  -e ADMIN_PASSWORD=your-secure-password \
-  -e CORS_ORIGIN=https://your-domain.com
+  ghcr.io/qurikuduo/chifan:main
+
+# 方式二：使用 docker-compose（推荐）
+# 1. 复制 .env.example 为 .env 并修改配置
+cp .env.example .env
+# 2. 编辑 .env，至少修改 JWT_SECRET
+# 3. 启动
+docker compose up -d
 ```
 
-数据持久化在 Docker volume `app-data` 中（SQLite 数据库 + 上传的照片）。
+访问 http://localhost:8787，默认管理员：`admin` / `admin123456`（请登录后立即修改密码）。
+
+数据持久化在 Docker volume `chifan-data` 中（SQLite 数据库 + 上传的照片）。
 
 ### 环境变量
 

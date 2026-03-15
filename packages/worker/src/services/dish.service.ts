@@ -183,6 +183,17 @@ export class DishService {
     const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     if (!ALLOWED_TYPES.includes(file.type)) throw new ServiceError('INVALID_INPUT', '只支持 JPG/PNG/WebP 格式', 400);
 
+    // Validate file content via magic bytes
+    const headerBuf = await file.slice(0, 12).arrayBuffer();
+    const header = new Uint8Array(headerBuf);
+    const isJpeg = header[0] === 0xFF && header[1] === 0xD8 && header[2] === 0xFF;
+    const isPng = header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4E && header[3] === 0x47;
+    const isWebp = header[0] === 0x52 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x46
+      && header[8] === 0x57 && header[9] === 0x45 && header[10] === 0x42 && header[11] === 0x50;
+    if (!isJpeg && !isPng && !isWebp) {
+      throw new ServiceError('INVALID_INPUT', '文件内容与图片格式不符', 400);
+    }
+
     const photoId = crypto.randomUUID().replace(/-/g, '');
     const key = `dishes/${dishId}/${photoId}`;
 

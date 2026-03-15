@@ -15,8 +15,20 @@ authRoutes.post('/register', async (c) => {
     return error(c, 'INVALID_INPUT', '请填写所有必填字段', 400);
   }
 
-  if (body.password.length < 6) {
-    return error(c, 'INVALID_INPUT', '密码长度不能少于6个字符', 400);
+  if (body.username.length > 30 || !/^[a-zA-Z0-9_]+$/.test(body.username)) {
+    return error(c, 'INVALID_INPUT', '用户名只能包含字母、数字和下划线，最长30个字符', 400);
+  }
+
+  if (body.email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+    return error(c, 'INVALID_INPUT', '请输入有效的邮箱地址', 400);
+  }
+
+  if (body.displayName.length > 50) {
+    return error(c, 'INVALID_INPUT', '昵称不能超过50个字符', 400);
+  }
+
+  if (body.password.length < 8) {
+    return error(c, 'INVALID_INPUT', '密码长度不能少于8个字符', 400);
   }
 
   const service = new AuthService(c.env.DB, c.env.JWT_SECRET);

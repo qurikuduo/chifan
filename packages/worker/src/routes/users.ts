@@ -61,8 +61,8 @@ userRoutes.put('/me/password', async (c) => {
     return error(c, 'INVALID_INPUT', '请填写原密码和新密码', 400);
   }
 
-  if (body.newPassword.length < 6) {
-    return error(c, 'INVALID_INPUT', '新密码长度不能少于6个字符', 400);
+  if (body.newPassword.length < 8) {
+    return error(c, 'INVALID_INPUT', '新密码长度不能少于8个字符', 400);
   }
 
   const service = new UserService(c.env.DB);
@@ -105,8 +105,8 @@ userRoutes.put('/:userId/reset-password', adminMiddleware, async (c) => {
   const userId = c.req.param('userId')!;
   const body = await c.req.json<{ newPassword?: string }>();
 
-  if (!body.newPassword || body.newPassword.length < 6) {
-    return error(c, 'INVALID_INPUT', '新密码长度不能少于6个字符', 400);
+  if (!body.newPassword || body.newPassword.length < 8) {
+    return error(c, 'INVALID_INPUT', '新密码长度不能少于8个字符', 400);
   }
 
   const service = new UserService(c.env.DB);

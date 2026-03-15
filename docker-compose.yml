@@ -1,15 +1,45 @@
+# 吃饭 - 家庭菜单协作平台
+# 使用方法：
+#   1. 复制 .env.example 为 .env 并修改配置
+#   2. docker compose up -d
+#   3. 访问 http://localhost:8787
+#   4. 默认管理员：admin / admin123456（请登录后立即修改）
+#
+# 数据持久化在 Docker volume 中，包括 SQLite 数据库和上传的照片。
+# 直接使用 GitHub Container Registry 镜像无需 build 步骤。
+
 services:
   app:
-    build: .
+    # 使用预构建镜像（推荐），或用 build: . 从源码构建
+    image: ghcr.io/qurikuduo/chifan:main
+    # build: .  # 取消注释此行以从源码构建
+    container_name: chifan
     ports:
-      - "8787:8787"
+      - "${PORT:-8787}:8787"
     volumes:
+      # SQLite 数据库 + 照片存储
       - app-data:/app/data
     environment:
-      - JWT_SECRET=change-me-in-production
-      - CORS_ORIGIN=*
+      # [必填-生产] JWT 签名密钥，建议使用: openssl rand -hex 32
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      # [可选] 允许的前端域名，生产环境应设为具体域名
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      # [可选] 服务端口
       - PORT=8787
+      # [可选] 首次初始化时的管理员密码
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123456}
+      # [可选] 数据库和照片路径（容器内路径，通常无需修改）
+      - DB_PATH=/app/data/family-menu.db
+      - PHOTOS_PATH=/app/data/photos
     restart: unless-stopped
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8787/api/v1/poll').then(r => r.status === 401 ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 volumes:
   app-data:
+    name: chifan-data

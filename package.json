@@ -9,7 +9,10 @@
       "esbuild",
       "sharp",
       "vue-demi"
-    ]
+    ],
+    "overrides": {
+      "serialize-javascript": ">=7.0.3"
+    }
   },
   "scripts": {
     "dev:web": "pnpm --filter @family-menu/web dev",
