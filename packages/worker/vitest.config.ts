@@ -4,6 +4,12 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['src/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/__tests__/**', 'src/server.ts'],
+    },
   },
   resolve: {
     extensions: ['.ts', '.js', '.json'],

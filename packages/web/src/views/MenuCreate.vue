@@ -54,6 +54,13 @@
           </div>
         </div>
 
+        <!-- 快速创建新菜品 -->
+        <div v-if="dishSearch.trim() && !searchResults.length" class="quick-add">
+          <button type="button" class="btn btn-secondary btn-block" @click="quickAddDish" :disabled="quickAdding">
+            {{ quickAdding ? '创建中...' : `➕ 快速创建「${dishSearch.trim()}」` }}
+          </button>
+        </div>
+
         <!-- Hover tooltip -->
         <div v-if="hoveredDish?.description" class="dish-tooltip">
           <strong>{{ hoveredDish.name }}</strong>
@@ -120,6 +127,7 @@ const hoveredDish = ref<DishResult | null>(null);
 const allDishes = ref<DishResult[]>([]);
 const familyMembers = ref<Array<{ id: string; displayName: string; familyRole: string | null }>>([]);
 const submitting = ref(false);
+const quickAdding = ref(false);
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -150,6 +158,26 @@ function addDishFromSearch(d: DishResult) {
 
 function removeDish(id: string) {
   selectedDishes.value = selectedDishes.value.filter((d) => d.id !== id);
+}
+
+async function quickAddDish() {
+  const name = dishSearch.value.trim();
+  if (!name) return;
+  quickAdding.value = true;
+  try {
+    const pinyin = toPinyin(name);
+    const initial = toPinyinInitial(name);
+    const res = await api.post<{ id: string }>('/dishes', { name, pinyin, pinyinInitial: initial });
+    selectedDishes.value.push({ id: res.id, name });
+    allDishes.value.push({ id: res.id, name, description: null, pinyin, selectionCount: 0, lastUsedAt: null });
+    dishSearch.value = '';
+    searchResults.value = [];
+    toast.success(`已创建「${name}」`);
+  } catch (e: unknown) {
+    toast.error((e as Error).message || '创建失败');
+  } finally {
+    quickAdding.value = false;
+  }
 }
 
 function excerpt(text: string, max = 60): string {
@@ -253,4 +281,5 @@ onMounted(loadData);
 }
 .remove-btn:hover { opacity: 1; }
 .hint { font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
+.quick-add { margin-top: var(--spacing-xs); }
 </style>

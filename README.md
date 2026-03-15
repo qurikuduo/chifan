@@ -1,6 +1,12 @@
-# 家庭菜单协作平台 (Family Menu)
+# 吃饭 - 家庭菜单协作平台 (ChiFan - Family Menu)
 
 一个专为家庭设计的用餐协作网站。厨师创建菜单，家人选菜，厨师根据结果做菜并通知开饭。
+
+## 🐳 Docker 镜像
+
+```
+ghcr.io/qurikuduo/chifan:main
+```
 
 ## 🌐 快速部署
 
@@ -150,7 +156,7 @@ pnpm dev:web
 ### 运行测试
 
 ```bash
-# 后端单元测试（107 个）
+# 后端单元测试（193 个）
 pnpm --filter @family-menu/worker test
 
 # 前端单元测试（24 个）
@@ -273,10 +279,10 @@ docker compose up -d \
 
 ```bash
 # 拉取并运行最新镜像
-docker pull ghcr.io/<your-username>/codextest:main
+docker pull ghcr.io/qurikuduo/chifan:main
 docker run -d -p 8787:8787 -v app-data:/app/data \
   -e JWT_SECRET=your-secret \
-  ghcr.io/<your-username>/codextest:main
+  ghcr.io/qurikuduo/chifan:main
 ```
 
 ### 生产环境检查清单
@@ -289,15 +295,25 @@ docker run -d -p 8787:8787 -v app-data:/app/data \
 
 ## 测试
 
-### 单元测试（131 个）
+### 单元测试（217 个）
 
 ```bash
-# 后端（107 个测试：服务层 55 + 路由层 11 + 管理员路由 27 + 工具函数 14）
+# 后端（193 个测试：服务层集成 73 + 路由层集成 37 + 路由单元 11 + 管理员路由 27 + 工具函数 14 + 服务层 31）
 pnpm --filter @family-menu/worker test
 
 # 前端（24 个测试：Toast 7 + Auth Store 7 + Component 3 + Notification Store 7）
 pnpm --filter @family-menu/web test
 ```
+
+### 测试覆盖率
+
+| 模块 | 语句覆盖率 | 分支覆盖率 | 函数覆盖率 |
+|------|-----------|-----------|------------|
+| 整体 | 84.04% | 78.83% | 86.84% |
+| 服务层 | 90.72% | 76.12% | 87.65% |
+| 路由层 | 71.27% | 79.41% | 100% |
+| 中间件 | 100% | 100% | 100% |
+| 工具函数 | 100% | 93.33% | 100% |
 
 ### E2E 测试（14 个）
 
@@ -315,4 +331,4 @@ pnpm --filter @family-menu/web typecheck
 
 ## 许可证
 
-私有项目，仅供家庭内部使用。
+MIT License

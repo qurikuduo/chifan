@@ -94,13 +94,13 @@ export class DishService {
     if (!d) throw new ServiceError('NOT_FOUND', '菜品不存在', 404);
 
     const [photos, tags, ingredients, cookingMethods] = await Promise.all([
-      this.db.prepare('SELECT id, dish_id, url, file_size, mime_type, uploaded_by, created_at FROM dish_photos WHERE dish_id = ?').bind(dishId).all(),
+      this.db.prepare('SELECT id, dish_id, photo_url, file_size, mime_type, uploaded_by, created_at FROM dish_photos WHERE dish_id = ?').bind(dishId).all(),
       this.db.prepare('SELECT t.id, t.name FROM tags t JOIN dish_tags dt ON t.id = dt.tag_id WHERE dt.dish_id = ?').bind(dishId).all(),
       this.db.prepare('SELECT i.id, i.name FROM ingredients i JOIN dish_ingredients di ON i.id = di.ingredient_id WHERE di.dish_id = ?').bind(dishId).all(),
       this.db.prepare('SELECT cm.id, cm.name FROM cooking_methods cm JOIN dish_cooking_methods dcm ON cm.id = dcm.cooking_method_id WHERE dcm.dish_id = ?').bind(dishId).all(),
     ]);
 
-    const photoList = (photos.results ?? []) as Array<{ id: string; dish_id: string; url: string; file_size: number | null; mime_type: string | null; uploaded_by: string; created_at: string }>;
+    const photoList = (photos.results ?? []) as Array<{ id: string; dish_id: string; photo_url: string; file_size: number | null; mime_type: string | null; uploaded_by: string; created_at: string }>;
 
     return {
       id: d.id,
@@ -111,7 +111,7 @@ export class DishService {
       createdAt: d.created_at,
       updatedAt: d.updated_at,
       defaultPhoto: d.default_photo_id ? photoList.find((p) => p.id === d.default_photo_id) ?? null : null,
-      photos: photoList.map((p) => ({ id: p.id, dishId: p.dish_id, url: p.url, fileSize: p.file_size, mimeType: p.mime_type, uploadedBy: p.uploaded_by, createdAt: p.created_at })),
+      photos: photoList.map((p) => ({ id: p.id, dishId: p.dish_id, url: p.photo_url, fileSize: p.file_size, mimeType: p.mime_type, uploadedBy: p.uploaded_by, createdAt: p.created_at })),
       tags: (tags.results ?? []) as Array<{ id: string; name: string }>,
       ingredients: (ingredients.results ?? []) as Array<{ id: string; name: string }>,
       cookingMethods: (cookingMethods.results ?? []) as Array<{ id: string; name: string }>,
@@ -193,7 +193,7 @@ export class DishService {
     const url = `/api/v1/photos/${key}`;
 
     await this.db
-      .prepare('INSERT INTO dish_photos (id, dish_id, url, file_size, mime_type, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)')
+      .prepare('INSERT INTO dish_photos (id, dish_id, photo_url, file_size, mime_type, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)')
       .bind(photoId, dishId, url, file.size, file.type, userId)
       .run();
 
@@ -399,13 +399,13 @@ export class DishService {
   private async batchLoadPhotos(dishIds: string[]) {
     const placeholders = dishIds.map(() => '?').join(',');
     const res = await this.db
-      .prepare(`SELECT id, dish_id, url FROM dish_photos WHERE dish_id IN (${placeholders})`)
+      .prepare(`SELECT id, dish_id, photo_url FROM dish_photos WHERE dish_id IN (${placeholders})`)
       .bind(...dishIds)
-      .all<{ id: string; dish_id: string; url: string }>();
+      .all<{ id: string; dish_id: string; photo_url: string }>();
     const map = new Map<string, Array<{ id: string; url: string }>>();
     for (const r of res.results ?? []) {
       if (!map.has(r.dish_id)) map.set(r.dish_id, []);
-      map.get(r.dish_id)!.push({ id: r.id, url: r.url });
+      map.get(r.dish_id)!.push({ id: r.id, url: r.photo_url });
     }
     return map;
   }
