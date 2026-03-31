@@ -14,6 +14,7 @@
     <p class="login-footer">
       {{ $t('auth.no_account') }}<router-link to="/register">{{ $t('auth.go_register') }}</router-link>
     </p>
+    <span class="version-tag">v{{ appVersion }}</span>
   </div>
 </template>
 
@@ -24,6 +25,7 @@ import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const auth = useAuthStore();
+const appVersion = __APP_VERSION__;
 
 const form = ref({ login: '', password: '' });
 const loading = ref(false);
@@ -76,5 +78,14 @@ async function handleLogin() {
   margin-top: var(--spacing-lg);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+.version-tag {
+  position: fixed;
+  bottom: var(--spacing-md);
+  right: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  opacity: 0.6;
 }
 </style>

@@ -29,6 +29,7 @@
 
       <button class="btn btn-danger btn-block" @click="handleLogout">{{ $t('auth.logout') }}</button>
     </div>
+    <p class="version-tag">v{{ appVersion }}</p>
   </AppLayout>
 </template>
 
@@ -44,6 +45,7 @@ import { supportedLocales } from '@/i18n/index';
 const router = useRouter();
 const auth = useAuthStore();
 const { locale } = useI18n();
+const appVersion = __APP_VERSION__;
 
 const currentLocale = ref(locale.value);
 
@@ -154,5 +156,13 @@ async function handleLogout() {
 
 .btn-danger:hover {
   opacity: 0.9;
+}
+
+.version-tag {
+  text-align: center;
+  margin-top: var(--spacing-lg);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  opacity: 0.6;
 }
 </style>
