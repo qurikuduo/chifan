@@ -40,6 +40,7 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/worker/package.json packages/worker/
+COPY packages/web/package.json packages/web/
 
 # Install production dependencies only (+ better-sqlite3 native build)
 RUN apk add --no-cache python3 make g++ && \
