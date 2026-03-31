@@ -111,9 +111,10 @@ describe('DishService', () => {
 
   describe('deleteDish', () => {
     it('should delete dish and R2 photos', async () => {
+      mock.mockFirst.mockResolvedValueOnce({ created_by: 'u1' });
       mock.mockAll.mockResolvedValueOnce({ results: [{ id: 'p1' }, { id: 'p2' }] });
 
-      await service.deleteDish('d1');
+      await service.deleteDish('d1', 'u1');
 
       expect(r2.delete).toHaveBeenCalledTimes(2);
       expect(r2.delete).toHaveBeenCalledWith('dishes/d1/p1');
@@ -131,7 +132,7 @@ describe('DishService', () => {
     });
 
     it('should throw when file too large', async () => {
-      mock.mockFirst.mockResolvedValueOnce({ id: 'd1' });
+      mock.mockFirst.mockResolvedValueOnce({ created_by: 'u1' });
 
       const bigContent = new Uint8Array(6 * 1024 * 1024);
       const file = new File([bigContent], 'big.jpg', { type: 'image/jpeg' });
@@ -139,7 +140,7 @@ describe('DishService', () => {
     });
 
     it('should throw when file type not allowed', async () => {
-      mock.mockFirst.mockResolvedValueOnce({ id: 'd1' });
+      mock.mockFirst.mockResolvedValueOnce({ created_by: 'u1' });
 
       const file = new File(['test'], 'doc.pdf', { type: 'application/pdf' });
       await expect(service.uploadPhoto('d1', file, 'u1')).rejects.toThrow('只支持 JPG/PNG/WebP 格式');
@@ -148,17 +149,19 @@ describe('DishService', () => {
 
   describe('setDefaultPhoto', () => {
     it('should throw when photo not found', async () => {
+      mock.mockFirst.mockResolvedValueOnce({ created_by: 'u1' });
       mock.mockFirst.mockResolvedValueOnce(null);
 
-      await expect(service.setDefaultPhoto('d1', 'p999')).rejects.toThrow('照片不存在');
+      await expect(service.setDefaultPhoto('d1', 'p999', 'u1')).rejects.toThrow('照片不存在');
     });
   });
 
   describe('deletePhoto', () => {
     it('should throw when photo not found', async () => {
+      mock.mockFirst.mockResolvedValueOnce({ created_by: 'u1' });
       mock.mockFirst.mockResolvedValueOnce(null);
 
-      await expect(service.deletePhoto('d1', 'p999')).rejects.toThrow('照片不存在');
+      await expect(service.deletePhoto('d1', 'p999', 'u1')).rejects.toThrow('照片不存在');
     });
   });
 

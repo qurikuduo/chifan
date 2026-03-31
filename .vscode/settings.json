@@ -3,6 +3,10 @@
         "/^cd d:\\\\projects\\\\AICoding\\\\codextest\\\\packages\\\\web; npx vite --host$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^Get-Process -Id 7792 \\| Select-Object ProcessName,Id,Path$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

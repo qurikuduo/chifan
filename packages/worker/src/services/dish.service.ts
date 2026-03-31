@@ -4,6 +4,15 @@ import type { D1Database, R2Bucket } from '../env.js';
 export class DishService {
   constructor(private db: D1Database, private photos: R2Bucket) {}
 
+  private async assertOwnerOrAdmin(dishId: string, userId: string, isAdmin: boolean) {
+    const dish = await this.db.prepare('SELECT created_by FROM dishes WHERE id = ?').bind(dishId).first<{ created_by: string }>();
+    if (!dish) throw new ServiceError('NOT_FOUND', '菜品不存在', 404);
+    if (!isAdmin && dish.created_by !== userId) {
+      throw new ServiceError('FORBIDDEN', '无权操作此菜品', 403);
+    }
+    return dish;
+  }
+
   async list(query: { keyword?: string; tagId?: string; ingredientId?: string; cookingMethodId?: string; page: number; pageSize: number }) {
     const { keyword, tagId, ingredientId, cookingMethodId, page, pageSize } = query;
     const conditions: string[] = [];
@@ -132,9 +141,8 @@ export class DishService {
     return { id };
   }
 
-  async update(dishId: string, input: { name?: string; description?: string; pinyin?: string; pinyinInitial?: string; ingredientIds?: string[]; cookingMethodIds?: string[]; tagIds?: string[]; defaultPhotoId?: string }, userId: string) {
-    const dish = await this.db.prepare('SELECT id, created_by FROM dishes WHERE id = ?').bind(dishId).first<{ id: string; created_by: string }>();
-    if (!dish) throw new ServiceError('NOT_FOUND', '菜品不存在', 404);
+  async update(dishId: string, input: { name?: string; description?: string; pinyin?: string; pinyinInitial?: string; ingredientIds?: string[]; cookingMethodIds?: string[]; tagIds?: string[]; defaultPhotoId?: string }, userId: string, isAdmin = false) {
+    await this.assertOwnerOrAdmin(dishId, userId, isAdmin);
 
     const sets: string[] = [];
     const params: (string | null)[] = [];
@@ -156,7 +164,8 @@ export class DishService {
     return { id: dishId };
   }
 
-  async deleteDish(dishId: string) {
+  async deleteDish(dishId: string, userId: string, isAdmin = false) {
+    await this.assertOwnerOrAdmin(dishId, userId, isAdmin);
     // Delete photos from R2
     const photos = await this.db.prepare('SELECT id FROM dish_photos WHERE dish_id = ?').bind(dishId).all<{ id: string }>();
     for (const p of photos.results ?? []) {
@@ -173,9 +182,8 @@ export class DishService {
     ]);
   }
 
-  async uploadPhoto(dishId: string, file: File, userId: string): Promise<{ id: string; url: string }> {
-    const dish = await this.db.prepare('SELECT id FROM dishes WHERE id = ?').bind(dishId).first();
-    if (!dish) throw new ServiceError('NOT_FOUND', '菜品不存在', 404);
+  async uploadPhoto(dishId: string, file: File, userId: string, isAdmin = false): Promise<{ id: string; url: string }> {
+    await this.assertOwnerOrAdmin(dishId, userId, isAdmin);
 
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) throw new ServiceError('INVALID_INPUT', '图片大小不能超过5MB', 400);
@@ -217,14 +225,16 @@ export class DishService {
     return { id: photoId, url };
   }
 
-  async setDefaultPhoto(dishId: string, photoId: string) {
+  async setDefaultPhoto(dishId: string, photoId: string, userId: string, isAdmin = false) {
+    await this.assertOwnerOrAdmin(dishId, userId, isAdmin);
     const photo = await this.db.prepare('SELECT id FROM dish_photos WHERE id = ? AND dish_id = ?').bind(photoId, dishId).first();
     if (!photo) throw new ServiceError('NOT_FOUND', '照片不存在', 404);
 
     await this.db.prepare("UPDATE dishes SET default_photo_id = ?, updated_at = datetime('now') WHERE id = ?").bind(photoId, dishId).run();
   }
 
-  async deletePhoto(dishId: string, photoId: string) {
+  async deletePhoto(dishId: string, photoId: string, userId: string, isAdmin = false) {
+    await this.assertOwnerOrAdmin(dishId, userId, isAdmin);
     const photo = await this.db.prepare('SELECT id FROM dish_photos WHERE id = ? AND dish_id = ?').bind(photoId, dishId).first();
     if (!photo) throw new ServiceError('NOT_FOUND', '照片不存在', 404);
 

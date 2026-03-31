@@ -103,7 +103,7 @@ describe('DishService (integration)', () => {
       const tagId = await seedTag(db, '家常菜');
       const { id } = await dishService.create({ name: '要删除的菜', tagIds: [tagId] }, userId);
 
-      await dishService.deleteDish(id);
+      await dishService.deleteDish(id, userId);
 
       await expect(dishService.getById(id)).rejects.toThrow('菜品不存在');
 
@@ -231,12 +231,12 @@ describe('DishService (integration)', () => {
   describe('setDefaultPhoto & deletePhoto', () => {
     it('should throw NOT_FOUND for setting non-existent photo as default', async () => {
       const { id } = await dishService.create({ name: '测试菜' }, userId);
-      await expect(dishService.setDefaultPhoto(id, 'nonexistent')).rejects.toThrow('照片不存在');
+      await expect(dishService.setDefaultPhoto(id, 'nonexistent', userId)).rejects.toThrow('照片不存在');
     });
 
     it('should throw NOT_FOUND for deleting non-existent photo', async () => {
       const { id } = await dishService.create({ name: '测试菜' }, userId);
-      await expect(dishService.deletePhoto(id, 'nonexistent')).rejects.toThrow('照片不存在');
+      await expect(dishService.deletePhoto(id, 'nonexistent', userId)).rejects.toThrow('照片不存在');
     });
   });
 });

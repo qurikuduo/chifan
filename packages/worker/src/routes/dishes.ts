@@ -80,7 +80,7 @@ dishRoutes.put('/:dishId', async (c) => {
   const body = await c.req.json<{ name?: string; description?: string; pinyin?: string; pinyinInitial?: string; ingredientIds?: string[]; cookingMethodIds?: string[]; tagIds?: string[]; defaultPhotoId?: string }>();
   const user = c.get('user');
   const service = new DishService(c.env.DB, c.env.PHOTOS);
-  const result = await service.update(dishId, body, user.sub);
+  const result = await service.update(dishId, body, user.sub, user.isAdmin);
   return ok(c, result);
 });
 
@@ -97,8 +97,9 @@ dishRoutes.post('/:dishId/clone', async (c) => {
 // DELETE /:dishId - 删除菜品
 dishRoutes.delete('/:dishId', async (c) => {
   const dishId = c.req.param('dishId')!;
+  const user = c.get('user');
   const service = new DishService(c.env.DB, c.env.PHOTOS);
-  await service.deleteDish(dishId);
+  await service.deleteDish(dishId, user.sub, user.isAdmin);
   return ok(c, { message: '已删除' });
 });
 
@@ -112,18 +113,19 @@ dishRoutes.post('/:dishId/photos', async (c) => {
   if (!file) return error(c, 'INVALID_INPUT', '请选择图片文件', 400);
 
   const service = new DishService(c.env.DB, c.env.PHOTOS);
-  const result = await service.uploadPhoto(dishId, file, user.sub);
+  const result = await service.uploadPhoto(dishId, file, user.sub, user.isAdmin);
   return ok(c, result, 201);
 });
 
 // PUT /:dishId/default-photo - 设置默认照片
 dishRoutes.put('/:dishId/default-photo', async (c) => {
   const dishId = c.req.param('dishId')!;
+  const user = c.get('user');
   const body = await c.req.json<{ photoId?: string }>();
   if (!body.photoId) return error(c, 'INVALID_INPUT', '请指定照片ID', 400);
 
   const service = new DishService(c.env.DB, c.env.PHOTOS);
-  await service.setDefaultPhoto(dishId, body.photoId);
+  await service.setDefaultPhoto(dishId, body.photoId, user.sub, user.isAdmin);
   return ok(c, { message: '已设置' });
 });
 
@@ -131,7 +133,8 @@ dishRoutes.put('/:dishId/default-photo', async (c) => {
 dishRoutes.delete('/:dishId/photos/:photoId', async (c) => {
   const dishId = c.req.param('dishId')!;
   const photoId = c.req.param('photoId')!;
+  const user = c.get('user');
   const service = new DishService(c.env.DB, c.env.PHOTOS);
-  await service.deletePhoto(dishId, photoId);
+  await service.deletePhoto(dishId, photoId, user.sub, user.isAdmin);
   return ok(c, { message: '已删除' });
 });
