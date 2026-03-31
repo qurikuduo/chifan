@@ -1,12 +1,31 @@
-# 吃饭 - 家庭菜单协作平台 (ChiFan - Family Menu)
+# 🍽 吃饭 - 家庭菜单协作平台 (ChiFan - Family Menu)
+
+[![CI/CD](https://github.com/qurikuduo/chifan/actions/workflows/docker.yml/badge.svg)](https://github.com/qurikuduo/chifan/actions)
+[![Docker](https://img.shields.io/badge/ghcr.io-qurikuduo%2Fchifan-blue)](https://ghcr.io/qurikuduo/chifan)
 
 一个专为家庭设计的用餐协作网站。厨师创建菜单，家人选菜，厨师根据结果做菜并通知开饭。
+
+<!-- 截图占位：建议在此放置首页截图 -->
+<!-- ![首页截图](docs/screenshots/home.png) -->
 
 ## 🐳 Docker 镜像
 
 ```
 ghcr.io/qurikuduo/chifan:main
 ```
+
+## 📸 界面截图
+
+<!-- 在 docs/screenshots/ 下放置截图，取消以下注释 -->
+<!-- 
+| 首页 | 菜品库 | 菜单详情 |
+|:----:|:------:|:--------:|
+| ![首页](docs/screenshots/home.png) | ![菜品库](docs/screenshots/dishes.png) | ![菜单详情](docs/screenshots/menu-detail.png) |
+
+| 选菜 | 通知 | 个人中心 |
+|:----:|:----:|:--------:|
+| ![选菜](docs/screenshots/selection.png) | ![通知](docs/screenshots/notifications.png) | ![个人中心](docs/screenshots/profile.png) |
+-->
 
 ## 🌐 快速部署
 
@@ -46,18 +65,32 @@ docker compose up -d
 - 个人最爱排行（金银铜牌标识）
 - 家庭成员偏好对比
 
+### 安全与权限
+- **菜品所有权控制** — 仅创建者或管理员可编辑/删除菜品及照片
+- **过敏原检测** — 自动检测菜单中与家人过敏食材冲突的菜品并发出警告
+- **文件上传安全** — Magic bytes 校验 + MIME 类型 + 大小限制
+- **密码安全** — PBKDF2 100000 次迭代，最短 8 位
+
+### 多语言支持 (i18n)
+- 🇨🇳 中文（默认）
+- 🇬🇧 English
+- 🇪🇸 Español
+- 🇸🇦 العربية
+- 自动检测浏览器语言，用户可手动切换
+
 ### 其他功能
 - 站内通知系统（菜单发布、开饭通知）
 - PWA 支持（可安装到手机桌面）
 - 移动端优先的响应式设计
 - Toast 消息提示（替代原生 alert）
 - 菜单打印功能（含食材汇总）
+- 饮食偏好设置（过敏食材、饮食备注）
 
 ## 技术栈
 
 | 层级 | 技术 |
 |------|------|
-| 前端 | Vue 3.5 + Vite 5.4 + Pinia 2.2 + Vue Router 4.4 |
+| 前端 | Vue 3.5 + Vite 6.4 + Pinia 2.2 + Vue Router 4.4 + vue-i18n 9 |
 | 后端 | Hono 4.6 on Node.js |
 | 数据库 | SQLite (better-sqlite3) |
 | 存储 | 本地文件系统 (图片) |
@@ -71,6 +104,17 @@ docker compose up -d
 - `marked` — Markdown 渲染
 - `dompurify` — HTML 安全净化
 - `vite-plugin-pwa` — PWA 支持
+
+## 架构概览
+
+```mermaid
+graph TB
+    Browser["浏览器 / PWA"] --> Vite["Vue 3 SPA<br/>(Vite + Pinia + vue-i18n)"]
+    Vite -->|/api/v1/*| Hono["Hono.js API Server<br/>(Node.js 20)"]
+    Hono --> SQLite[("SQLite<br/>(better-sqlite3)")]
+    Hono --> FS["本地文件系统<br/>(照片存储)"]
+    Hono --> JWT["JWT Auth<br/>(jose HS256)"]
+```
 
 ## 项目结构
 
@@ -156,13 +200,13 @@ pnpm dev:web
 ### 运行测试
 
 ```bash
-# 后端单元测试（193 个）
+# 后端单元测试（274 个）
 pnpm --filter @family-menu/worker test
 
 # 前端单元测试（24 个）
 pnpm --filter @family-menu/web test
 
-# E2E 测试（14 个，需先启动本地开发服务器）
+# E2E 测试（30 个，需先启动本地开发服务器）
 pnpm --filter @family-menu/web test:e2e
 
 # 监听模式
@@ -301,32 +345,36 @@ docker run -d -p 8787:8787 -v app-data:/app/data \
 
 ## 测试
 
-### 单元测试（217 个）
+### 单元 / 集成测试（298 个）
 
 ```bash
-# 后端（193 个测试：服务层集成 73 + 路由层集成 37 + 路由单元 11 + 管理员路由 27 + 工具函数 14 + 服务层 31）
+# 后端（274 个测试，12 个测试文件，覆盖率 97.67%）
 pnpm --filter @family-menu/worker test
 
 # 前端（24 个测试：Toast 7 + Auth Store 7 + Component 3 + Notification Store 7）
 pnpm --filter @family-menu/web test
 ```
 
-### 测试覆盖率
+### 后端测试覆盖率
 
 | 模块 | 语句覆盖率 | 分支覆盖率 | 函数覆盖率 |
 |------|-----------|-----------|------------|
-| 整体 | 84.04% | 78.83% | 86.84% |
-| 服务层 | 90.72% | 76.12% | 87.65% |
-| 路由层 | 71.27% | 79.41% | 100% |
+| 整体 | 97.67% | 91%+ | 98%+ |
+| 服务层 | 98%+ | 90%+ | 100% |
+| 路由层 | 96%+ | 90%+ | 100% |
 | 中间件 | 100% | 100% | 100% |
-| 工具函数 | 100% | 93.33% | 100% |
+| 工具函数 | 100% | 93%+ | 100% |
 
-### E2E 测试（14 个）
+### E2E 测试（30 个）
 
 ```bash
-# 需要先启动本地开发服务器
+# 需要先启动本地开发服务器（端口 8787 + 5173）
+pnpm dev:worker &
+pnpm dev:web &
 pnpm --filter @family-menu/web test:e2e
 ```
+
+E2E 覆盖：认证流程、导航、菜品 CRUD、Markdown 编辑器、菜单工作流、管理后台、多语言切换、用户偏好、过敏原检测、收藏页面等。
 
 ### 类型检查
 
