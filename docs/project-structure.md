@@ -1,95 +1,97 @@
 # 项目结构设计
 
+> 最后更新：2026-03-31，与实际代码结构保持一致
+
 ```
 codextest/
 ├── .github/
-│   └── instructions/
-│       └── copilot.instructions.md
-├── docs/                          # 文档目录
-│   ├── requirement.md             → 移至此处（或保留根目录）
+│   ├── instructions/
+│   │   └── copilot.instructions.md
+│   └── workflows/
+│       └── docker.yml              # CI/CD: test → build → push to GHCR
+│
+├── docs/                           # 设计文档
 │   ├── database-schema.md
 │   ├── api-design.md
-│   └── ui-design.md
+│   ├── ui-design.md
+│   └── project-structure.md        # 本文件
 │
-├── packages/                      # Monorepo 结构
-│   ├── shared/                    # 前后端共享类型和工具
+├── packages/                       # pnpm Monorepo
+│   ├── shared/                     # 前后端共享类型和常量
 │   │   ├── src/
-│   │   │   ├── types/             # TypeScript 类型定义
+│   │   │   ├── types/
 │   │   │   │   ├── user.ts
 │   │   │   │   ├── dish.ts
 │   │   │   │   ├── menu.ts
 │   │   │   │   ├── notification.ts
 │   │   │   │   └── index.ts
-│   │   │   ├── constants/         # 常量（状态枚举、餐次类型等）
-│   │   │   │   └── index.ts
+│   │   │   ├── constants/
+│   │   │   │   └── index.ts        # MenuStatus, MealType, NotificationType 等枚举
 │   │   │   └── index.ts
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
-│   ├── worker/                    # Cloudflare Worker 后端
+│   ├── worker/                     # 后端 API (Node.js + Hono.js)
 │   │   ├── src/
-│   │   │   ├── index.ts           # Worker 入口
-│   │   │   ├── router.ts          # 路由定义
+│   │   │   ├── index.ts            # Hono app 入口（CORS、路由注册、错误处理、限流）
+│   │   │   ├── server.ts           # Node.js 服务入口（DB 初始化、静态文件、管理员创建）
+│   │   │   ├── env.ts              # Env 接口定义（D1Database, R2Bucket 兼容类型）
+│   │   │   ├── adapters/
+│   │   │   │   ├── sqlite.ts       # D1Database 兼容的 better-sqlite3 适配器
+│   │   │   │   └── storage.ts      # R2Bucket 兼容的本地文件系统适配器
 │   │   │   ├── middleware/
-│   │   │   │   ├── auth.ts        # JWT 认证中间件
-│   │   │   │   └── cors.ts        # CORS 中间件
+│   │   │   │   ├── auth.ts         # JWT 认证 + 管理员中间件
+│   │   │   │   └── rate-limit.ts   # 速率限制中间件（内存存储）
 │   │   │   ├── routes/
-│   │   │   │   ├── auth.ts        # 认证路由
-│   │   │   │   ├── users.ts       # 用户管理路由
-│   │   │   │   ├── dishes.ts      # 菜品路由
-│   │   │   │   ├── ingredients.ts # 原材料路由
+│   │   │   │   ├── auth.ts         # 认证路由（登录/注册/获取用户）
+│   │   │   │   ├── users.ts        # 用户管理路由
+│   │   │   │   ├── dishes.ts       # 菜品 CRUD + 照片 + 克隆 + 搜索 + 收藏
+│   │   │   │   ├── ingredients.ts
+│   │   │   │   ├── ingredient-categories.ts
 │   │   │   │   ├── cooking-methods.ts
-│   │   │   │   ├── tags.ts        # 标签路由
-│   │   │   │   ├── menus.ts       # 菜单路由
-│   │   │   │   ├── selections.ts  # 选菜路由
+│   │   │   │   ├── tags.ts
+│   │   │   │   ├── menus.ts        # 菜单全生命周期 + 过敏原警告
+│   │   │   │   ├── selections.ts   # 选菜路由
 │   │   │   │   ├── notifications.ts
-│   │   │   │   └── poll.ts        # 轮询路由
-│   │   │   ├── services/          # 业务逻辑层
-│   │   │   │   ├── auth.service.ts
-│   │   │   │   ├── user.service.ts
-│   │   │   │   ├── dish.service.ts
-│   │   │   │   ├── ingredient.service.ts
-│   │   │   │   ├── menu.service.ts
-│   │   │   │   ├── selection.service.ts
-│   │   │   │   └── notification.service.ts
+│   │   │   │   ├── poll.ts         # 轮询接口
+│   │   │   │   └── uploads.ts      # 通用图片上传
+│   │   │   ├── services/
+│   │   │   │   ├── auth.service.ts  # AuthService + UserService + ServiceError
+│   │   │   │   ├── dish.service.ts  # DishService（含所有权校验）
+│   │   │   │   └── menu.service.ts  # MenuService + NotificationService
 │   │   │   ├── db/
-│   │   │   │   ├── schema.sql     # 建表SQL
-│   │   │   │   ├── seed.sql       # 预置数据
-│   │   │   │   └── migrations/    # 数据库迁移
+│   │   │   │   ├── schema.sql       # 20 张表 DDL
+│   │   │   │   └── seed.sql         # 预置数据（分类/烹饪方式/标签）
 │   │   │   └── utils/
-│   │   │       ├── jwt.ts
-│   │   │       ├── password.ts    # 密码哈希
-│   │   │       ├── pinyin.ts      # 拼音转换
-│   │   │       └── response.ts    # 统一响应格式
-│   │   ├── wrangler.toml          # Cloudflare Worker 配置
+│   │   │       ├── password.ts      # PBKDF2 哈希（Web Crypto API）
+│   │   │       └── response.ts      # ok(), error(), parsePagination()
+│   │   ├── src/__tests__/           # 12 个测试文件，274 个测试用例
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
-│   └── web/                       # Vue 3 前端
+│   └── web/                         # 前端 (Vue 3 SPA + PWA)
 │       ├── public/
-│       │   ├── favicon.ico
-│       │   ├── manifest.json      # PWA manifest
-│       │   └── sw.js              # Service Worker
+│       │   ├── favicon.svg
+│       │   ├── apple-touch-icon.png
+│       │   └── pwa-*.png            # PWA 图标
 │       ├── src/
-│       │   ├── main.ts            # 入口
+│       │   ├── main.ts              # 入口（Pinia + Router + i18n）
 │       │   ├── App.vue
+│       │   ├── i18n/
+│       │   │   ├── index.ts         # vue-i18n 配置（自动检测浏览器语言）
+│       │   │   └── locales/
+│       │   │       ├── zh.json      # 中文（默认）
+│       │   │       ├── en.json      # English
+│       │   │       ├── es.json      # Español
+│       │   │       └── ar.json      # العربية
 │       │   ├── router/
-│       │   │   └── index.ts       # Vue Router 路由配置
-│       │   ├── stores/            # Pinia 状态管理
-│       │   │   ├── auth.ts
-│       │   │   ├── menu.ts
-│       │   │   ├── dish.ts
-│       │   │   └── notification.ts
-│       │   ├── api/               # API 调用封装
-│       │   │   ├── client.ts      # HTTP 客户端（fetch封装）
-│       │   │   ├── auth.ts
-│       │   │   ├── users.ts
-│       │   │   ├── dishes.ts
-│       │   │   ├── ingredients.ts
-│       │   │   ├── menus.ts
-│       │   │   ├── selections.ts
-│       │   │   └── notifications.ts
-│       │   ├── views/             # 页面组件
+│       │   │   └── index.ts         # Vue Router 路由守卫 + 路由表
+│       │   ├── stores/
+│       │   │   ├── auth.ts          # Pinia auth store（token/user/login/logout）
+│       │   │   └── notification.ts  # Pinia notification store（30s 轮询）
+│       │   ├── api/
+│       │   │   └── client.ts        # Fetch HTTP 客户端（自动注入 Auth header）
+│       │   ├── views/               # 26 个页面组件
 │       │   │   ├── Login.vue
 │       │   │   ├── Register.vue
 │       │   │   ├── Home.vue
@@ -105,6 +107,9 @@ codextest/
 │       │   │   ├── Profile.vue
 │       │   │   ├── ProfileEdit.vue
 │       │   │   ├── ChangePassword.vue
+│       │   │   ├── Preferences.vue  # 饮食偏好 + 过敏食材
+│       │   │   ├── Favorites.vue    # 个人收藏
+│       │   │   ├── Help.vue         # 帮助页面
 │       │   │   └── admin/
 │       │   │       ├── AdminHome.vue
 │       │   │       ├── UserManage.vue
@@ -113,60 +118,66 @@ codextest/
 │       │   │       ├── IngredientCategoryManage.vue
 │       │   │       ├── CookingMethodManage.vue
 │       │   │       └── TagManage.vue
-│       │   ├── components/        # 可复用组件
-│       │   │   ├── layout/
-│       │   │   │   ├── AppHeader.vue
-│       │   │   │   ├── BottomNav.vue
-│       │   │   │   └── AppLayout.vue
-│       │   │   ├── common/
-│       │   │   │   ├── LoadingSpinner.vue
-│       │   │   │   ├── EmptyState.vue
-│       │   │   │   ├── Toast.vue
-│       │   │   │   └── PhotoUploader.vue
-│       │   │   ├── dish/
-│       │   │   │   ├── DishCard.vue
-│       │   │   │   ├── DishPicker.vue    # 菜品选择弹窗
-│       │   │   │   └── IngredientSearch.vue # 原材料搜索
-│       │   │   └── menu/
-│       │   │       ├── MenuCard.vue
-│       │   │       ├── MenuStatusBadge.vue
-│       │   │       └── SelectionItem.vue
-│       │   ├── composables/       # Vue 3 组合式函数
-│       │   │   ├── useAuth.ts
-│       │   │   ├── usePolling.ts  # 轮询逻辑
-│       │   │   ├── useAutoSave.ts # 自动保存
-│       │   │   └── usePush.ts     # 浏览器推送
-│       │   ├── styles/
-│       │   │   ├── variables.css  # CSS 变量（颜色、字体等）
-│       │   │   └── global.css
-│       │   └── utils/
-│       │       └── format.ts      # 格式化工具
+│       │   ├── components/
+│       │   │   ├── AppLayout.vue    # 底部导航布局（5 个 Tab）
+│       │   │   ├── BottomNav.vue
+│       │   │   ├── MarkdownEditor.vue # Markdown 编辑器（工具栏 + 预览）
+│       │   │   └── ToastContainer.vue
+│       │   ├── composables/
+│       │   │   └── useToast.ts      # Toast 通知组合式函数
+│       │   └── styles/
+│       │       └── variables.css
+│       ├── e2e/
+│       │   └── app.spec.ts          # 30 个 Playwright E2E 测试
+│       ├── src/__tests__/           # 4 个测试文件，24 个测试用例
+│       ├── vite.config.ts           # Vite + PWA + 代理 + 代码分割
+│       ├── playwright.config.ts     # Playwright 配置（locale: zh-CN）
 │       ├── index.html
-│       ├── vite.config.ts
-│       ├── package.json
-│       └── tsconfig.json
+│       └── package.json
 │
-├── package.json                   # 根 package.json（workspace配置）
-├── pnpm-workspace.yaml            # pnpm workspace 配置
+├── Dockerfile                       # 多阶段 Docker 构建
+├── docker-compose.yml               # Docker Compose 部署配置
+├── package.json                     # 根 workspace 脚本
+├── pnpm-workspace.yaml              # packages/*
+├── tsconfig.base.json
 ├── requirement.md
 └── README.md
 ```
 
-## 技术选型确认
+## 技术选型
 
 | 技术 | 选型 | 说明 |
 |------|------|------|
-| 包管理 | pnpm + workspace | Monorepo 管理 |
-| 前端框架 | Vue 3 Composition API | 轻量高效 |
-| 构建工具 | Vite | 快速开发体验 |
-| 状态管理 | Pinia | Vue 3 官方推荐 |
-| 路由 | Vue Router 4 | SPA 路由 |
-| UI 组件库 | 待定（可用 Vant 4 移动端组件库或纯手写） |
-| HTTP 客户端 | 原生 fetch 封装 | Worker 环境友好 |
-| 后端框架 | Hono.js | 轻量级，完美适配 Cloudflare Workers |
-| 数据库 | Cloudflare D1 | 内置 SQLite |
-| 文件存储 | Cloudflare R2 | S3 兼容对象存储 |
-| 密码哈希 | bcryptjs | Web Crypto API 兼容 |
-| JWT | jose | 轻量级 JWT 库，支持 Workers |
-| 拼音 | pinyin-pro | 拼音转换库 |
-| PWA | vite-plugin-pwa | Vite PWA 插件 |
+| 包管理 | pnpm 10+ workspace | Monorepo 管理 |
+| 前端框架 | Vue 3.5 Composition API | 轻量高效 |
+| 构建工具 | Vite 6.4 | 快速开发体验 |
+| 状态管理 | Pinia 2.2 | Vue 3 官方推荐 |
+| 路由 | Vue Router 4.4 | SPA 路由 |
+| 国际化 | vue-i18n 9 | 4 语言（zh/en/es/ar） |
+| HTTP 客户端 | 原生 fetch 封装 | 自动注入 JWT |
+| 后端框架 | Hono.js 4.6 | 轻量级 Web 框架 |
+| 运行时 | Node.js 20+ | @hono/node-server |
+| 数据库 | better-sqlite3 | 本地 SQLite |
+| 文件存储 | 本地文件系统 | data/photos/ 目录 |
+| 密码哈希 | PBKDF2 (Web Crypto API) | 100000 次迭代 |
+| JWT | jose | HS256, 7 天有效期 |
+| 拼音 | pinyin-pro | 前端拼音转换 |
+| Markdown | marked + DOMPurify | 安全渲染 |
+| PWA | vite-plugin-pwa (Workbox) | 离线支持 |
+| 测试 | Vitest 3.2 + Playwright 1.58 | 单元/集成/E2E |
+| 部署 | Docker + GitHub Actions | 自动 CI/CD |
+
+## 与原设计的差异
+
+| 变更项 | 原设计 | 当前实现 |
+|--------|--------|----------|
+| 后端运行时 | Cloudflare Workers | Node.js 20 + @hono/node-server |
+| 数据库 | Cloudflare D1 | better-sqlite3（通过 D1 兼容适配器） |
+| 文件存储 | Cloudflare R2 | 本地文件系统（通过 R2 兼容适配器） |
+| UI 组件库 | 待定 / Vant 4 | 纯手写 CSS |
+| 国际化 | 未规划 | vue-i18n 4 语言 |
+| 用户偏好 | 未规划 | 饮食备注 + 过敏食材 |
+| 过敏原检测 | 未规划 | 菜单过敏原冲突警告 |
+| Markdown 编辑器 | 未规划 | 自定义编辑器 + 工具栏 + 图片上传 |
+| 速率限制 | 未规划 | 内存 IP 限流中间件 |
+| 部署 | Cloudflare Workers + Pages | Docker 多阶段构建 + GitHub Actions |

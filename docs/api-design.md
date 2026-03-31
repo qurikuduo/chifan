@@ -1,11 +1,72 @@
-# API 接口文档
+# API 接口设计
 
-## 基础信息
+> 最后更新：2026-03-31，与实际代码实现保持一致
 
-- Base URL: `/api/v1`
-- 认证方式: JWT Bearer Token（`Authorization: Bearer <token>`）
-- 响应格式: JSON
-- 通用错误响应格式:
+## 全局约定
+
+| 项目 | 值 |
+|------|-----|
+| 基础路径 | `/api/v1` |
+| 协议 | HTTP (开发) / HTTPS (生产) |
+| Content-Type | `application/json`（上传接口为 `multipart/form-data`） |
+| 认证方式 | JWT Bearer Token — `Authorization: Bearer <token>` |
+| 令牌有效期 | 7 天 |
+| 签名算法 | HS256 (jose) |
+| CORS | 允许方法 GET/POST/PUT/DELETE/OPTIONS，预检缓存 86400s |
+
+## 速率限制
+
+所有响应均包含速率限制头：
+
+| Header | 说明 |
+|--------|------|
+| `X-RateLimit-Limit` | 窗口内最大请求数 |
+| `X-RateLimit-Remaining` | 剩余请求数 |
+| `X-RateLimit-Reset` | 窗口重置时间戳（秒） |
+| `Retry-After` | 被限流时需等待的秒数 |
+
+| 路由匹配 | 限流预设 | 窗口 | 最大请求数 |
+|-----------|----------|------|------------|
+| `/api/v1/auth/*` | authLimiter | 60 秒 | 10 |
+| `/api/v1/uploads/*` | uploadLimiter | 60 秒 | 20 |
+| `/api/v1/*` | apiLimiter | 60 秒 | 100 |
+
+超出限制返回 HTTP 429：
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Too many requests, please try again later"
+  }
+}
+```
+
+## 统一响应格式
+
+### 成功
+
+```json
+{
+  "data": { ... }
+}
+```
+
+或分页：
+
+```json
+{
+  "data": [ ... ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "total": 100,
+    "totalPages": 5
+  }
+}
+```
+
+### 错误
 
 ```json
 {
@@ -16,1030 +77,290 @@
 }
 ```
 
-- 通用分页参数: `?page=1&pageSize=20`
-- 通用分页响应:
+### 常用 HTTP 状态码
+
+| 状态码 | 含义 |
+|--------|------|
+| 200 | 成功 |
+| 201 | 创建成功 |
+| 204 | 无内容 |
+| 400 | 请求参数错误 |
+| 401 | 未认证 |
+| 403 | 权限不足 |
+| 404 | 资源不存在 |
+| 409 | 冲突（唯一约束等业务规则） |
+| 429 | 请求过于频繁 |
+| 500 | 服务器内部错误 |
+
+---
+
+## 1. 健康检查
+
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| GET | `/api/v1/health` | 无 | 返回 `{ status: "ok" }` |
+
+---
+
+## 2. 认证 `/api/v1/auth`
+
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| POST | `/register` | 无 | 注册新用户（需管理员审批） |
+| POST | `/login` | 无 | 登录获取 JWT |
+| POST | `/logout` | 是 | 登出（无状态，客户端清除 token） |
+| GET | `/me` | 是 | 获取当前用户信息 |
+
+### POST `/register`
+
+请求体：
 
 ```json
 {
-  "data": [...],
-  "pagination": {
-    "page": 1,
-    "pageSize": 20,
-    "total": 100,
-    "totalPages": 5
-  }
+  "username": "string (必填)",
+  "email": "string (必填)",
+  "password": "string (必填)",
+  "displayName": "string (必填)"
+}
+```
+
+响应 201：`{ message: "注册成功，请等待管理员审批" }`
+
+### POST `/login`
+
+请求体：
+
+```json
+{
+  "login": "string (用户名或邮箱)",
+  "password": "string"
+}
+```
+
+响应 200：
+
+```json
+{
+  "token": "jwt_string",
+  "expiresIn": 604800,
+  "user": { "id": 1, "username": "...", "displayName": "...", "isAdmin": false }
 }
 ```
 
 ---
 
-## 1. 认证模块 `/api/v1/auth`
+## 3. 用户 `/api/v1/users`
 
-### 1.1 注册
+> 所有接口均需认证
 
-```
-POST /auth/register
-```
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/` | 管理员 | 列出用户（支持 `status` 过滤） |
+| GET | `/family-members` | 已认证 | 获取已批准的家庭成员 |
+| GET | `/me/preferences` | 已认证 | 获取当前用户饮食偏好 |
+| PUT | `/me/preferences` | 已认证 | 更新饮食偏好 |
+| GET | `/preferences/all` | 已认证 | 获取所有家庭成员偏好 |
+| POST | `/` | 管理员 | 创建用户 |
+| PUT | `/me/password` | 已认证 | 修改自己密码 |
+| PUT | `/:userId` | 本人或管理员 | 更新用户信息 |
+| PUT | `/:userId/approve` | 管理员 | 审批用户 `{ action: "approve" | "reject" }` |
+| PUT | `/:userId/reset-password` | 管理员 | 重置用户密码 |
 
-**无需认证**
+### PUT `/me/preferences`
 
-请求体:
 ```json
 {
-  "username": "string (必填, 3-30字符)",
-  "email": "string (必填, 邮箱格式)",
-  "password": "string (必填, 6-50字符)",
-  "displayName": "string (必填, 显示名称)"
-}
-```
-
-响应 `201`:
-```json
-{
-  "message": "注册成功，等待管理员审批"
-}
-```
-
-### 1.2 登录
-
-```
-POST /auth/login
-```
-
-**无需认证**
-
-请求体:
-```json
-{
-  "login": "string (必填, 用户名或邮箱)",
-  "password": "string (必填)"
-}
-```
-
-响应 `200`:
-```json
-{
-  "token": "jwt_token_string",
-  "user": {
-    "id": "string",
-    "username": "string",
-    "email": "string",
-    "displayName": "string",
-    "familyRole": "string|null",
-    "isAdmin": false,
-    "avatarUrl": "string|null"
-  }
-}
-```
-
-### 1.3 登出
-
-```
-POST /auth/logout
-```
-
-**需要认证**
-
-响应 `200`:
-```json
-{
-  "message": "已登出"
-}
-```
-
-### 1.4 获取当前用户信息
-
-```
-GET /auth/me
-```
-
-**需要认证**
-
-响应 `200`:
-```json
-{
-  "id": "string",
-  "username": "string",
-  "email": "string",
-  "displayName": "string",
-  "familyRole": "string|null",
-  "isAdmin": false,
-  "avatarUrl": "string|null"
+  "dietaryNotes": "string (可选，饮食备注)",
+  "allergenIds": [1, 2, 3]
 }
 ```
 
 ---
 
-## 2. 用户管理模块 `/api/v1/users`
+## 4. 菜品 `/api/v1/dishes`
 
-### 2.1 获取所有用户（管理员）
+> 所有接口均需认证。变更操作（PUT/DELETE/上传照片）需要**菜品创建者或管理员**权限。
 
-```
-GET /users?status=pending&page=1&pageSize=20
-```
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/search` | 已认证 | 搜索菜品（Query: `q`, `limit`，最大 30） |
+| GET | `/favorites` | 已认证 | 获取当前用户收藏菜品 |
+| GET | `/favorites/all` | 已认证 | 获取所有家庭成员收藏 |
+| GET | `/` | 已认证 | 列表（Query: `keyword`, `tagId`, `ingredientId`, `cookingMethodId`, `page`, `pageSize`） |
+| GET | `/:dishId` | 已认证 | 详情 |
+| POST | `/` | 已认证 | 创建菜品 |
+| PUT | `/:dishId` | 创建者/管理员 | 更新菜品 |
+| POST | `/:dishId/clone` | 已认证 | 克隆菜品 |
+| DELETE | `/:dishId` | 创建者/管理员 | 删除菜品 |
+| POST | `/:dishId/photos` | 创建者/管理员 | 上传菜品照片（multipart） |
+| PUT | `/:dishId/default-photo` | 创建者/管理员 | 设置默认照片 `{ photoId }` |
+| DELETE | `/:dishId/photos/:photoId` | 创建者/管理员 | 删除照片 |
 
-**需要认证 + 管理员权限**
+### POST `/`
 
-查询参数:
-- `status`: `pending` | `approved` | `rejected` | 不传则返回全部
-
-响应 `200`:
-```json
-{
-  "data": [
-    {
-      "id": "string",
-      "username": "string",
-      "email": "string",
-      "displayName": "string",
-      "familyRole": "string|null",
-      "isAdmin": false,
-      "status": "pending",
-      "createdAt": "ISO8601"
-    }
-  ],
-  "pagination": { ... }
-}
-```
-
-### 2.2 审批用户（管理员）
-
-```
-PUT /users/:userId/approve
-```
-
-**需要认证 + 管理员权限**
-
-请求体:
-```json
-{
-  "action": "approve | reject"
-}
-```
-
-响应 `200`:
-```json
-{
-  "message": "操作成功",
-  "user": { ... }
-}
-```
-
-### 2.3 创建用户（管理员直接添加）
-
-```
-POST /users
-```
-
-**需要认证 + 管理员权限**
-
-请求体:
-```json
-{
-  "username": "string",
-  "email": "string",
-  "password": "string",
-  "displayName": "string",
-  "familyRole": "string|null"
-}
-```
-
-响应 `201`:
-```json
-{
-  "user": { ... }
-}
-```
-
-### 2.4 更新用户信息
-
-```
-PUT /users/:userId
-```
-
-**需要认证**（自己或管理员）
-
-请求体:
-```json
-{
-  "displayName": "string",
-  "familyRole": "string",
-  "avatarUrl": "string"
-}
-```
-
-### 2.5 重置用户密码（管理员）
-
-```
-PUT /users/:userId/reset-password
-```
-
-**需要认证 + 管理员权限**
-
-请求体:
-```json
-{
-  "newPassword": "string"
-}
-```
-
-### 2.6 修改自己的密码
-
-```
-PUT /users/me/password
-```
-
-**需要认证**
-
-请求体:
-```json
-{
-  "oldPassword": "string",
-  "newPassword": "string"
-}
-```
-
-### 2.7 获取所有已审批家庭成员
-
-```
-GET /users/family-members
-```
-
-**需要认证**
-
-响应 `200`:
-```json
-{
-  "data": [
-    {
-      "id": "string",
-      "displayName": "string",
-      "familyRole": "string",
-      "avatarUrl": "string|null"
-    }
-  ]
-}
-```
-
----
-
-## 3. 菜品模块 `/api/v1/dishes`
-
-### 3.1 获取菜品列表
-
-```
-GET /dishes?keyword=红烧&tagIds=tag1,tag2&page=1&pageSize=20
-```
-
-**需要认证**
-
-查询参数:
-- `keyword`: 菜品名称模糊搜索
-- `tagIds`: 按标签筛选（逗号分隔）
-- `ingredientIds`: 按原材料筛选
-- `cookingMethodIds`: 按烹饪方式筛选
-
-响应 `200`:
-```json
-{
-  "data": [
-    {
-      "id": "string",
-      "name": "string",
-      "description": "string|null",
-      "defaultPhoto": {
-        "id": "string",
-        "url": "string"
-      },
-      "tags": [{ "id": "string", "name": "string" }],
-      "ingredients": [{ "id": "string", "name": "string" }],
-      "cookingMethods": [{ "id": "string", "name": "string" }],
-      "selectionCount": 10,
-      "createdAt": "ISO8601"
-    }
-  ],
-  "pagination": { ... }
-}
-```
-
-### 3.2 获取单个菜品
-
-```
-GET /dishes/:dishId
-```
-
-**需要认证**
-
-响应 `200`:
-```json
-{
-  "id": "string",
-  "name": "string",
-  "description": "string|null",
-  "defaultPhotoId": "string|null",
-  "photos": [
-    { "id": "string", "url": "string", "createdAt": "ISO8601" }
-  ],
-  "tags": [{ "id": "string", "name": "string" }],
-  "ingredients": [{ "id": "string", "name": "string", "category": "string" }],
-  "cookingMethods": [{ "id": "string", "name": "string" }],
-  "createdBy": { "id": "string", "displayName": "string" },
-  "createdAt": "ISO8601",
-  "updatedAt": "ISO8601"
-}
-```
-
-### 3.3 新增菜品
-
-```
-POST /dishes
-```
-
-**需要认证**
-
-请求体:
 ```json
 {
   "name": "string (必填)",
-  "description": "string",
-  "ingredientIds": ["string"],
-  "cookingMethodIds": ["string"],
-  "tagIds": ["string"],
-  "defaultPhotoId": "string|null"
+  "description": "string (Markdown，可选)",
+  "pinyin": "string (可选)",
+  "pinyinInitial": "string (可选)",
+  "ingredientIds": [1, 2],
+  "cookingMethodIds": [1],
+  "tagIds": [1, 2]
 }
-```
-
-响应 `201`:
-```json
-{
-  "dish": { ... }
-}
-```
-
-### 3.4 更新菜品
-
-```
-PUT /dishes/:dishId
-```
-
-**需要认证**
-
-请求体: 同新增（部分更新）
-
-### 3.5 删除菜品
-
-```
-DELETE /dishes/:dishId
-```
-
-**需要认证**（创建者或管理员）
-
-### 3.6 上传菜品照片
-
-```
-POST /dishes/:dishId/photos
-```
-
-**需要认证**
-
-请求体: `multipart/form-data`
-- `photo`: 图片文件 (JPG/PNG/WebP, 最大5MB)
-
-响应 `201`:
-```json
-{
-  "photo": {
-    "id": "string",
-    "url": "string",
-    "fileSize": 123456,
-    "mimeType": "image/jpeg"
-  }
-}
-```
-
-### 3.7 设置默认照片
-
-```
-PUT /dishes/:dishId/default-photo
-```
-
-**需要认证**
-
-请求体:
-```json
-{
-  "photoId": "string"
-}
-```
-
-### 3.8 删除菜品照片
-
-```
-DELETE /dishes/:dishId/photos/:photoId
-```
-
-**需要认证**
-
----
-
-## 4. 原材料模块 `/api/v1/ingredients`
-
-### 4.1 搜索原材料
-
-```
-GET /ingredients?keyword=niu&categoryId=cat_meat&page=1&pageSize=50
-```
-
-**需要认证**
-
-查询参数:
-- `keyword`: 支持汉字/拼音/拼音首字母模糊搜索
-- `categoryId`: 按分类筛选
-
-### 4.2 获取所有原材料（按分类分组）
-
-```
-GET /ingredients/grouped
-```
-
-**需要认证**
-
-响应 `200`:
-```json
-{
-  "data": [
-    {
-      "category": { "id": "string", "name": "肉类" },
-      "ingredients": [
-        { "id": "string", "name": "牛肉", "pinyin": "niurou" }
-      ]
-    }
-  ]
-}
-```
-
-### 4.3 新增原材料
-
-```
-POST /ingredients
-```
-
-**需要认证**
-
-请求体:
-```json
-{
-  "name": "string (必填)",
-  "categoryId": "string"
-}
-```
-
-> 拼音和拼音首字母由后端自动生成
-
-### 4.4 更新原材料
-
-```
-PUT /ingredients/:id
-```
-
-### 4.5 删除原材料
-
-```
-DELETE /ingredients/:id
-```
-
-**需要认证 + 管理员权限**
-
----
-
-## 5. 原材料分类 `/api/v1/ingredient-categories`
-
-### 5.1 获取所有分类
-
-```
-GET /ingredient-categories
-```
-
-### 5.2 新增分类
-
-```
-POST /ingredient-categories
-```
-
-请求体:
-```json
-{
-  "name": "string",
-  "sortOrder": 0
-}
-```
-
-### 5.3 更新分类
-
-```
-PUT /ingredient-categories/:id
-```
-
-### 5.4 删除分类
-
-```
-DELETE /ingredient-categories/:id
 ```
 
 ---
 
-## 6. 烹饪方式模块 `/api/v1/cooking-methods`
+## 5. 食材 `/api/v1/ingredients`
 
-### 6.1 获取所有烹饪方式
-
-```
-GET /cooking-methods
-```
-
-### 6.2 新增烹饪方式
-
-```
-POST /cooking-methods
-```
-
-请求体:
-```json
-{
-  "name": "string"
-}
-```
-
-### 6.3 更新烹饪方式
-
-```
-PUT /cooking-methods/:id
-```
-
-### 6.4 删除烹饪方式
-
-```
-DELETE /cooking-methods/:id
-```
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/` | 已认证 | 搜索（Query: `keyword`, `categoryId`） |
+| GET | `/grouped` | 已认证 | 按分类分组 |
+| POST | `/` | 管理员 | 创建食材 `{ name, categoryId? }` |
+| PUT | `/:id` | 管理员 | 更新食材 |
+| DELETE | `/:id` | 管理员 | 删除食材 |
 
 ---
 
-## 7. 标签模块 `/api/v1/tags`
+## 6. 食材分类 `/api/v1/ingredient-categories`
 
-### 7.1 获取所有标签
-
-```
-GET /tags
-```
-
-### 7.2 新增标签
-
-```
-POST /tags
-```
-
-请求体:
-```json
-{
-  "name": "string"
-}
-```
-
-### 7.3 更新标签
-
-```
-PUT /tags/:id
-```
-
-### 7.4 删除标签
-
-```
-DELETE /tags/:id
-```
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/` | 已认证 | 列出所有分类 |
+| POST | `/` | 管理员 | 创建 `{ name, sortOrder? }` |
+| PUT | `/:id` | 管理员 | 更新 |
+| DELETE | `/:id` | 管理员 | 删除 |
 
 ---
 
-## 8. 菜单模块 `/api/v1/menus`
+## 7. 烹饪方式 `/api/v1/cooking-methods`
 
-### 8.1 获取菜单列表
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/` | 已认证 | 列出全部 |
+| POST | `/` | 管理员 | 创建 `{ name }` |
+| PUT | `/:id` | 管理员 | 更新 |
+| DELETE | `/:id` | 管理员 | 删除 |
 
-```
-GET /menus?status=published&mealType=dinner&page=1&pageSize=20
-```
+---
 
-**需要认证**
+## 8. 标签 `/api/v1/tags`
 
-查询参数:
-- `status`: draft / published / selection_closed / cooking / completed
-- `mealType`: breakfast / lunch / dinner / afternoon_tea / late_night
-- `dateFrom`: ISO8601 日期
-- `dateTo`: ISO8601 日期
-- `createdByMe`: `true` 仅看自己创建的
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/` | 已认证 | 列出全部 |
+| POST | `/` | 管理员 | 创建 `{ name }` |
+| PUT | `/:id` | 管理员 | 更新 |
+| DELETE | `/:id` | 管理员 | 删除 |
 
-### 8.2 获取单个菜单详情
+---
 
-```
-GET /menus/:menuId
-```
+## 9. 菜单 `/api/v1/menus`
 
-**需要认证**
+> 变更操作需**菜单创建者**权限。
 
-响应 `200`:
-```json
-{
-  "id": "string",
-  "title": "string",
-  "mealType": "dinner",
-  "mealTime": "ISO8601",
-  "deadline": "ISO8601",
-  "status": "published",
-  "createdBy": { "id": "string", "displayName": "string" },
-  "creators": [
-    { "userId": "string", "displayName": "string", "role": "owner" }
-  ],
-  "invitees": [
-    {
-      "userId": "string",
-      "displayName": "string",
-      "familyRole": "母亲",
-      "hasSelected": true,
-      "selectedAt": "ISO8601"
-    }
-  ],
-  "dishes": [
-    {
-      "menuDishId": "string",
-      "dishId": "string",
-      "name": "string",
-      "description": "string",
-      "photoUrl": "string",
-      "sortOrder": 0,
-      "addedBy": { "id": "string", "displayName": "string" },
-      "selections": [
-        { "userId": "string", "displayName": "string", "familyRole": "string" }
-      ],
-      "selectionCount": 3
-    }
-  ],
-  "createdAt": "ISO8601",
-  "updatedAt": "ISO8601"
-}
-```
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/` | 已认证 | 列表（Query: `status`, `page`, `pageSize`） |
+| GET | `/:menuId` | 参与者 | 详情 |
+| POST | `/` | 已认证 | 创建菜单 |
+| PUT | `/:menuId` | 创建者 | 更新基本信息 |
+| DELETE | `/:menuId` | 创建者 | 删除菜单 |
+| POST | `/:menuId/dishes` | 创建者 | 添加菜品 `{ dishId, photoUrl?, sortOrder? }` |
+| DELETE | `/:menuId/dishes/:menuDishId` | 创建者 | 移除菜品 |
+| PUT | `/:menuId/dishes/reorder` | 创建者 | 重排菜品顺序 |
+| PUT | `/:menuId/invitees` | 创建者 | 更新受邀人 `{ inviteeIds[] }` |
+| PUT | `/:menuId/collaborators` | 创建者 | 更新协作者 `{ collaboratorIds[] }` |
+| POST | `/:menuId/publish` | 创建者 | 发布菜单 |
+| POST | `/:menuId/close-selection` | 创建者 | 结束选菜 |
+| POST | `/:menuId/start-cooking` | 创建者 | 开始做饭 |
+| POST | `/:menuId/complete` | 创建者 | 完成菜单 |
+| GET | `/:menuId/selections/me` | 参与者 | 获取个人选菜 |
+| PUT | `/:menuId/selections` | 参与者 | 提交/更新选菜 `{ menuDishIds[] }` |
+| GET | `/:menuId/selections/summary` | 参与者 | 选菜汇总 |
+| GET | `/:menuId/print` | 参与者 | 打印数据 |
+| GET | `/:menuId/allergen-warnings` | 已认证 | 过敏原冲突警告 |
 
-### 8.3 创建菜单
+### POST `/`
 
-```
-POST /menus
-```
-
-**需要认证**
-
-请求体:
 ```json
 {
   "title": "string (必填)",
-  "mealType": "dinner (必填)",
-  "mealTime": "ISO8601 (必填)",
-  "deadline": "ISO8601 (必填)",
-  "inviteeIds": ["userId1", "userId2"],
-  "collaboratorIds": ["userId3"],
-  "dishes": [
-    {
-      "dishId": "string",
-      "photoUrl": "string|null",
-      "sortOrder": 0
-    }
-  ]
+  "mealType": "breakfast | lunch | dinner | afternoon_tea | late_night",
+  "mealTime": "ISO 8601 日期时间",
+  "deadline": "ISO 8601 日期时间",
+  "inviteeIds": [1, 2, 3],
+  "collaboratorIds": [4],
+  "dishes": [{ "dishId": 1, "sortOrder": 1 }]
 }
 ```
 
-### 8.4 更新菜单基本信息
+### 菜单状态流转
 
 ```
-PUT /menus/:menuId
-```
-
-**需要认证**（创建者或协作厨师）
-
-请求体:
-```json
-{
-  "title": "string",
-  "mealType": "string",
-  "mealTime": "ISO8601",
-  "deadline": "ISO8601"
-}
-```
-
-### 8.5 向菜单添加菜品
-
-```
-POST /menus/:menuId/dishes
-```
-
-**需要认证**（创建者或协作厨师）
-
-请求体:
-```json
-{
-  "dishId": "string (必填)",
-  "photoUrl": "string|null",
-  "sortOrder": 0
-}
-```
-
-> 每添加一个菜品立即保存（自动保存机制）
-
-### 8.6 从菜单移除菜品
-
-```
-DELETE /menus/:menuId/dishes/:menuDishId
-```
-
-**需要认证**（创建者或协作厨师）
-
-### 8.7 更新菜单中菜品顺序
-
-```
-PUT /menus/:menuId/dishes/reorder
-```
-
-请求体:
-```json
-{
-  "orderedDishIds": ["menuDishId1", "menuDishId2", "menuDishId3"]
-}
-```
-
-### 8.8 更新邀请人员
-
-```
-PUT /menus/:menuId/invitees
-```
-
-请求体:
-```json
-{
-  "inviteeIds": ["userId1", "userId2"]
-}
-```
-
-### 8.9 更新协作厨师
-
-```
-PUT /menus/:menuId/collaborators
-```
-
-请求体:
-```json
-{
-  "collaboratorIds": ["userId1"]
-}
-```
-
-### 8.10 发布菜单（草稿 → 已发布）
-
-```
-POST /menus/:menuId/publish
-```
-
-**需要认证**（创建者）
-
-> 发布后通知所有被邀请的家人
-
-### 8.11 关闭选菜（手动提前关闭）
-
-```
-POST /menus/:menuId/close-selection
-```
-
-**需要认证**（创建者或协作厨师）
-
-### 8.12 标记烹饪中
-
-```
-POST /menus/:menuId/start-cooking
-```
-
-**需要认证**（创建者或协作厨师）
-
-### 8.13 标记已完成（饭做好了）
-
-```
-POST /menus/:menuId/complete
-```
-
-**需要认证**（创建者或协作厨师）
-
-> 通知所有被邀请的家人"饭做好了"
-
-### 8.14 删除菜单
-
-```
-DELETE /menus/:menuId
-```
-
-**需要认证**（创建者或管理员，仅草稿状态可删）
-
----
-
-## 9. 选菜模块 `/api/v1/menus/:menuId/selections`
-
-### 9.1 提交/更新我的选择
-
-```
-PUT /menus/:menuId/selections
-```
-
-**需要认证**（被邀请的家人）
-
-请求体:
-```json
-{
-  "menuDishIds": ["menuDishId1", "menuDishId2"]
-}
-```
-
-> 覆盖式更新：传入当前选中的所有菜品ID
-
-### 9.2 获取我的选择
-
-```
-GET /menus/:menuId/selections/me
-```
-
-**需要认证**
-
-响应 `200`:
-```json
-{
-  "menuDishIds": ["menuDishId1", "menuDishId2"],
-  "selectedAt": "ISO8601"
-}
-```
-
-### 9.3 获取选菜汇总
-
-```
-GET /menus/:menuId/selections/summary
-```
-
-**需要认证**
-
-响应 `200`:
-```json
-{
-  "dishes": [
-    {
-      "menuDishId": "string",
-      "dishName": "string",
-      "photoUrl": "string",
-      "selectionCount": 3,
-      "selectedBy": [
-        { "userId": "string", "displayName": "string", "familyRole": "string" }
-      ]
-    }
-  ],
-  "totalInvitees": 5,
-  "completedInvitees": 3
-}
-```
-
-### 9.4 获取可打印的菜单
-
-```
-GET /menus/:menuId/print
-```
-
-**需要认证**（创建者或协作厨师）
-
-响应 `200`:
-```json
-{
-  "title": "string",
-  "mealType": "dinner",
-  "mealTime": "ISO8601",
-  "dishes": [
-    {
-      "name": "string",
-      "selectionCount": 3,
-      "ingredients": ["牛肉", "土豆", "胡萝卜"],
-      "cookingMethods": ["炖"]
-    }
-  ],
-  "totalInvitees": 5
-}
+draft → published → selection_closed → cooking → completed
 ```
 
 ---
 
-## 10. 通知模块 `/api/v1/notifications`
+## 10. 通知 `/api/v1/notifications`
 
-### 10.1 获取我的通知列表
-
-```
-GET /notifications?unreadOnly=true&page=1&pageSize=20
-```
-
-**需要认证**
-
-### 10.2 标记通知已读
-
-```
-PUT /notifications/:notificationId/read
-```
-
-### 10.3 标记所有通知已读
-
-```
-PUT /notifications/read-all
-```
-
-### 10.4 获取未读数量
-
-```
-GET /notifications/unread-count
-```
-
-响应 `200`:
-```json
-{
-  "count": 5
-}
-```
-
-### 10.5 注册浏览器推送
-
-```
-POST /notifications/push-subscription
-```
-
-请求体:
-```json
-{
-  "endpoint": "string",
-  "keys": {
-    "p256dh": "string",
-    "auth": "string"
-  }
-}
-```
-
-### 10.6 取消浏览器推送
-
-```
-DELETE /notifications/push-subscription
-```
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/` | 已认证 | 列表（分页） |
+| GET | `/unread-count` | 已认证 | 未读计数 |
+| PUT | `/read-all` | 已认证 | 全部标为已读 |
+| PUT | `/:notificationId/read` | 已认证 | 单条标为已读 |
 
 ---
 
-## 11. 轮询接口
+## 11. 轮询 `/api/v1/poll`
 
-### 11.1 轮询新消息
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/` | 已认证 | 长轮询新通知（Query: `since`） |
 
-```
-GET /poll?since=ISO8601
-```
+响应：
 
-**需要认证**
-
-响应 `200`:
 ```json
 {
   "notifications": [...],
   "unreadCount": 5,
-  "serverTime": "ISO8601"
+  "serverTime": "2026-03-31T12:00:00.000Z"
 }
 ```
 
-> 前端每 30 秒轮询一次，`since` 参数传上次轮询的 `serverTime`
+---
+
+## 12. 上传 `/api/v1/uploads`
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| POST | `/image` | 已认证 | 上传图片（multipart/form-data） |
+
+约束：
+
+- 最大 5 MB
+- 仅允许 JPG、PNG、WebP
+- Magic bytes 校验防止伪造文件类型
+
+响应 201：
+
+```json
+{
+  "url": "/api/v1/photos/uploads/{imageId}"
+}
+```
 
 ---
 
-## 12. 统计模块 `/api/v1/stats`（后续迭代）
+## 接口统计
 
-### 12.1 菜品受欢迎排行
-
-```
-GET /stats/popular-dishes?limit=10&dateFrom=&dateTo=
-```
-
-### 12.2 个人偏好统计
-
-```
-GET /stats/user-preferences/:userId
-```
-
----
-
-## 错误码一览
-
-| HTTP Status | Code | 说明 |
-|-------------|------|------|
-| 400 | INVALID_INPUT | 请求参数不合法 |
-| 401 | UNAUTHORIZED | 未登录或 Token 过期 |
-| 403 | FORBIDDEN | 无权限 |
-| 404 | NOT_FOUND | 资源不存在 |
-| 409 | DUPLICATE | 重复数据（如用户名已存在） |
-| 410 | EXPIRED | 选菜已截止 |
-| 422 | UNPROCESSABLE | 业务逻辑错误（如菜单状态不允许该操作） |
-| 500 | INTERNAL_ERROR | 服务器内部错误 |
+| 分类 | 数量 |
+|------|------|
+| 公开接口 | 4（注册、登录、健康检查） |
+| 已认证接口 | ~60 |
+| 管理员接口 | ~15 |
+| 合计 | ~77 |

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from './env.js';
 import { ServiceError } from './services/auth.service.js';
+import { apiLimiter, authLimiter, uploadLimiter } from './middleware/rate-limit.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
 import { dishRoutes } from './routes/dishes.js';
@@ -30,6 +31,11 @@ app.use('/*', async (c, next) => {
 
 // Health check
 app.get('/api/v1/health', (c) => c.json({ status: 'ok' }));
+
+// Rate limiting
+app.use('/api/v1/auth/*', authLimiter);
+app.use('/api/v1/uploads/*', uploadLimiter);
+app.use('/api/v1/*', apiLimiter);
 
 // Routes
 app.route('/api/v1/auth', authRoutes);
