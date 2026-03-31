@@ -28,8 +28,51 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:shared
-      - run: pnpm --filter @family-menu/worker test
-      - run: pnpm --filter @family-menu/web test
+
+      - name: Backend tests with coverage
+        run: pnpm --filter @family-menu/worker test -- --coverage
+
+      - name: Frontend tests with coverage
+        run: pnpm --filter @family-menu/web test -- --coverage
+
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: packages/worker/coverage/
+          retention-days: 14
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: packages/web/coverage/
+          retention-days: 14
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          echo "## Backend Coverage" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat packages/worker/coverage/coverage-summary.json 2>/dev/null | node -e "
+            const s=require('fs').readFileSync('/dev/stdin','utf8');
+            try { const d=JSON.parse(s).total;
+              Object.entries(d).forEach(([k,v])=>console.log(k+': '+v.pct+'%'));
+            } catch(e) { console.log('Coverage data unavailable'); }
+          " >> $GITHUB_STEP_SUMMARY || echo 'Coverage data unavailable' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Frontend Coverage" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat packages/web/coverage/coverage-summary.json 2>/dev/null | node -e "
+            const s=require('fs').readFileSync('/dev/stdin','utf8');
+            try { const d=JSON.parse(s).total;
+              Object.entries(d).forEach(([k,v])=>console.log(k+': '+v.pct+'%'));
+            } catch(e) { console.log('Coverage data unavailable'); }
+          " >> $GITHUB_STEP_SUMMARY || echo 'Coverage data unavailable' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   build:
     needs: test
