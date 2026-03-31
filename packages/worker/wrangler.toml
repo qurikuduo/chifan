@@ -1,0 +1,36 @@
+name = "chifan-api"
+main = "src/worker.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ── D1 Database ──
+[[d1_databases]]
+binding = "DB"
+database_name = "chifan-db"
+database_id = ""  # Fill after: wrangler d1 create chifan-db
+
+# ── R2 Storage ──
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "chifan-photos"
+
+# ── Environment Variables ──
+[vars]
+CORS_ORIGIN = "*"
+
+# ── Secrets (set via: wrangler secret put JWT_SECRET) ──
+# JWT_SECRET
+# ADMIN_PASSWORD
+
+# ── Routes ──
+# Uncomment and customize for custom domain:
+# routes = [{ pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }]
+
+# ── Dev settings ──
+[dev]
+port = 8787
+
+# ── Production ──
+[env.production]
+[env.production.vars]
+CORS_ORIGIN = "https://chifan.pages.dev"
