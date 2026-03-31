@@ -67,7 +67,7 @@ VOLUME ["/app/data"]
 ENV PORT=8787
 ENV DB_PATH=/app/data/family-menu.db
 ENV PHOTOS_PATH=/app/data/photos
-ENV STATIC_DIR=../web/dist
+ENV STATIC_DIR=../../web/dist
 ENV NODE_ENV=production
 
 EXPOSE 8787
